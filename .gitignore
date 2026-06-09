@@ -1,0 +1,32 @@
+# Personal local reference files
+APPLICATION_REFERENCE.md
+SESSION_LOG.md
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+
+# Dependencies and build outputs
+node_modules/
+dist/
+build/
+coverage/
+.next/
+
+# Python local environments
+.venv/
+venv/
+__pycache__/
+
+# Local runtime data and artifacts
+data/
+artifacts/
+logs/
+sessions/
+cookies/
+user-data/
+.playwright/
+*.db
+*.sqlite
+*.sqlite3
