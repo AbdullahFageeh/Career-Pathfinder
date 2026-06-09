@@ -51,5 +51,6 @@ The first implementation milestone is the single-job pipeline:
 
 ## Architecture notes
 - `src/shared/contracts.ts` defines the current shared domain types.
+- `src/policy/targetTitles.ts` stores the first exact Lane 1 target-job-title shortlist for direct-fit searches.
 - Each module directory currently exposes a focused stub entry point so implementation can grow without changing the top-level layout.
 - The runtime entry point is `src/index.ts`.
