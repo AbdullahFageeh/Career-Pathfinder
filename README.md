@@ -13,6 +13,7 @@ This repository starts with the agreed architecture and core contracts for:
 The following files are intentionally kept out of Git because they contain personal references or live session notes:
 - `APPLICATION_REFERENCE.md`
 - `SESSION_LOG.md`
+- `APPLICATION_REFERENCE.md` now serves as the runtime profile seed source for the first end-to-end pipeline.
 
 ## Project structure
 ```text path=null start=null
@@ -42,6 +43,7 @@ npm run typecheck
 npm run build
 npm test
 ```
+The first persisted pipeline reads the runtime candidate profile from local `APPLICATION_REFERENCE.md` and writes runtime state under ignored `data/`.
 
 ## Initial implementation target
 The first implementation milestone is the single-job pipeline:
@@ -51,11 +53,15 @@ The first implementation milestone is the single-job pipeline:
 4. create an application record
 
 ## Architecture notes
+- `src/profile/referenceProfile.ts` loads a runtime candidate profile from the local application reference markdown file.
+- `src/ingest/ingestJobPosting.ts` canonicalizes source output into a stable `JobPosting`.
+- `src/storage/fileStore.ts` persists jobs, tailored resumes, ATS assessments, and application records in a local file-backed store.
 - `src/shared/contracts.ts` defines the current shared domain types.
 - `src/policy/targetTitles.ts` stores the first exact Lane 1 target-job-title shortlist for direct-fit searches.
 - `src/sources/arbeitsagentur.ts` fetches and normalizes Lane 1 listings from the official Arbeitsagentur jobs API.
 - `src/tailor/resumeTailor.ts` builds the first structured tailored resume draft from a candidate profile and job post.
 - `src/ats/scoreResume.ts` scores ATS readiness for a tailored resume and returns blockers plus suggested fixes.
 - `src/tracker/applicationTracker.ts` creates application records, stores status history, and manages notes plus follow-ups.
+- `src/worker/singleJobPipeline.ts` runs the first persisted `ingest -> tailor -> ATS -> tracker` flow for one job.
 - Each module directory currently exposes a focused stub entry point so implementation can grow without changing the top-level layout.
 - The runtime entry point is `src/index.ts`.

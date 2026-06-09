@@ -1,3 +1,10 @@
+export {
+  createFileBackedStorage,
+  resolveDefaultStoragePath,
+  type FileBackedStorageOptions,
+  type PipelineStorage,
+  type PipelineStorageSnapshot
+} from "./fileStore.js";
 export const storageModule = {
   key: "storage",
   summary: "Persist jobs, queue state, ATS assessments, and application records.",

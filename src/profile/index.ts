@@ -1,3 +1,9 @@
+export {
+  loadCandidateProfile,
+  parseCandidateProfileReference,
+  resolveDefaultCandidateProfilePath,
+  type CandidateProfileLoadOptions
+} from "./referenceProfile.js";
 export const profileModule = {
   key: "profile",
   summary: "Manage the canonical candidate profile and recurring application answers.",
