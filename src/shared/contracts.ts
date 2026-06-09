@@ -60,6 +60,30 @@ export type JobPosting = {
   tags: string[];
   discoveredAt: string;
 };
+export type TailoringEvidenceKind =
+  | "headline"
+  | "target-role-family"
+  | "proof-point"
+  | "certification";
+
+export type TailoringEvidence = {
+  kind: TailoringEvidenceKind;
+  value: string;
+  score: number;
+  matchedKeywords: string[];
+};
+
+export type TailoredResumeSectionKey =
+  | "summary"
+  | "target-role-families"
+  | "proof-points"
+  | "certifications";
+
+export type TailoredResumeSection = {
+  key: TailoredResumeSectionKey;
+  title: string;
+  lines: string[];
+};
 
 export type TailoredResume = {
   id: string;
@@ -68,6 +92,14 @@ export type TailoredResume = {
   generatedAt: string;
   outputPath?: string;
   evidenceUsed: string[];
+  matchedKeywords: string[];
+  tailoredHeadline: string;
+  tailoredSummary: string;
+  selectedRoleFamilies: string[];
+  selectedProofPoints: string[];
+  selectedCertifications: string[];
+  sections: TailoredResumeSection[];
+  evidenceTrail: TailoringEvidence[];
 };
 
 export type AtsAssessment = {

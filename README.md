@@ -53,5 +53,6 @@ The first implementation milestone is the single-job pipeline:
 - `src/shared/contracts.ts` defines the current shared domain types.
 - `src/policy/targetTitles.ts` stores the first exact Lane 1 target-job-title shortlist for direct-fit searches.
 - `src/sources/arbeitsagentur.ts` fetches and normalizes Lane 1 listings from the official Arbeitsagentur jobs API.
+- `src/tailor/resumeTailor.ts` builds the first structured tailored resume draft from a candidate profile and job post.
 - Each module directory currently exposes a focused stub entry point so implementation can grow without changing the top-level layout.
 - The runtime entry point is `src/index.ts`.
