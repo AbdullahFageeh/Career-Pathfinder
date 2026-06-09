@@ -102,6 +102,20 @@ export type TailoredResume = {
   evidenceTrail: TailoringEvidence[];
 };
 
+export type AtsAssessmentDimensionKey =
+  | "keyword-coverage"
+  | "role-alignment"
+  | "evidence-strength"
+  | "resume-structure";
+
+export type AtsAssessmentDimension = {
+  key: AtsAssessmentDimensionKey;
+  label: string;
+  score: number;
+  maxScore: number;
+  notes: string[];
+};
+
 export type AtsAssessment = {
   id: string;
   jobId: string;
@@ -109,6 +123,9 @@ export type AtsAssessment = {
   passed: boolean;
   blockingIssues: string[];
   suggestions: string[];
+  threshold: number;
+  missingKeywords: string[];
+  componentScores: AtsAssessmentDimension[];
   assessedAt: string;
 };
 
