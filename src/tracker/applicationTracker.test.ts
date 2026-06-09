@@ -63,6 +63,23 @@ const siteManagerJob: JobPosting = {
   discoveredAt: "2026-06-09T13:00:00.000Z"
 };
 
+const productionManagerJob: JobPosting = {
+  id: "job-production-manager",
+  source: {
+    kind: "job-board",
+    name: "arbeitsagentur",
+    url: "https://example.com/production-manager"
+  },
+  title: "Production Manager (m/w/d)",
+  company: "Messe Build Systems GmbH",
+  location: "Hamburg, Deutschland",
+  description:
+    "Lead production planning, installation delivery, build execution, and vendor coordination for large-scale event projects.",
+  detectedRoleFamily: "production-delivery",
+  tags: ["lane-1", "source:arbeitsagentur", "family:production-delivery", "matched-title:production-manager"],
+  discoveredAt: "2026-06-09T13:30:00.000Z"
+};
+
 test("createApplicationRecord initializes a discover-stage tracker record", () => {
   const record = createApplicationRecord({
     job: siteManagerJob,
@@ -125,4 +142,40 @@ test("tracker record stores notes, worker decisions, and follow-up lifecycle", (
   assert.equal(outstanding.length, 1);
   assert.equal(completed.followUps[0].status, "completed");
   assert.equal(completed.followUps[0].note, "Checked company page and LinkedIn.");
+});
+
+test("getOutstandingFollowUps keeps overdue scheduled follow-ups visible", () => {
+  const baseRecord = createApplicationRecord({ job: siteManagerJob });
+  const withFutureFollowUp = scheduleFollowUp(baseRecord, {
+    dueAt: "2026-06-12T09:00:00.000Z",
+    reason: "Check recruiter contact details.",
+    createdAt: "2026-06-10T10:07:00.000Z"
+  });
+  const withOverdueFollowUp = scheduleFollowUp(withFutureFollowUp, {
+    dueAt: "2026-06-10T08:30:00.000Z",
+    reason: "Review overdue application handoff.",
+    createdAt: "2026-06-09T10:07:00.000Z"
+  });
+
+  const outstanding = getOutstandingFollowUps(withOverdueFollowUp, "2026-06-11T09:00:00.000Z");
+
+  assert.deepEqual(
+    outstanding.map((followUp) => followUp.reason),
+    ["Review overdue application handoff.", "Check recruiter contact details."]
+  );
+});
+
+test("tracker record rejects resume and ATS assessment from a different job", () => {
+  const baseRecord = createApplicationRecord({ job: siteManagerJob });
+  const tailoredResume = buildTailoredResume(sampleProfile, productionManagerJob);
+  const atsAssessment = scoreAtsReadiness(productionManagerJob, tailoredResume);
+
+  assert.throws(
+    () => attachTailoredResumeToRecord(baseRecord, tailoredResume),
+    /Cannot attach tailored resume/
+  );
+  assert.throws(
+    () => attachAtsAssessmentToRecord(baseRecord, atsAssessment),
+    /Cannot attach ATS assessment/
+  );
 });

@@ -20,6 +20,20 @@ const APPLICATION_STATUS_ORDER: ApplicationStatus[] = [
 
 const STATUS_RANK = new Map(APPLICATION_STATUS_ORDER.map((status, index) => [status, index]));
 
+function assertArtifactMatchesApplicationJob(
+  record: ApplicationRecord,
+  artifactJobId: string,
+  artifactLabel: "tailored resume" | "ATS assessment"
+): void {
+  if (record.jobId === artifactJobId) {
+    return;
+  }
+
+  throw new Error(
+    `Cannot attach ${artifactLabel} for job "${artifactJobId}" to application "${record.id}" for job "${record.jobId}".`
+  );
+}
+
 export type TrackerMutationOptions = {
   at?: string;
 };
@@ -118,6 +132,7 @@ export function attachTailoredResumeToRecord(
   resume: TailoredResume,
   options: TrackerMutationOptions = {}
 ): ApplicationRecord {
+  assertArtifactMatchesApplicationJob(record, resume.jobId, "tailored resume");
   const updatedAt = options.at ?? resume.generatedAt ?? new Date().toISOString();
   const withResume = {
     ...record,
@@ -140,6 +155,7 @@ export function attachAtsAssessmentToRecord(
   assessment: AtsAssessment,
   options: TrackerMutationOptions = {}
 ): ApplicationRecord {
+  assertArtifactMatchesApplicationJob(record, assessment.jobId, "ATS assessment");
   const updatedAt = options.at ?? assessment.assessedAt ?? new Date().toISOString();
   const withAssessment = {
     ...record,
@@ -264,6 +280,15 @@ export function getOutstandingFollowUps(
   asOf = new Date().toISOString()
 ): ApplicationFollowUp[] {
   return record.followUps
-    .filter((followUp) => followUp.status === "scheduled" && followUp.dueAt >= asOf)
-    .sort((left, right) => left.dueAt.localeCompare(right.dueAt));
+    .filter((followUp) => followUp.status === "scheduled")
+    .sort((left, right) => {
+      const leftIsOverdue = left.dueAt < asOf;
+      const rightIsOverdue = right.dueAt < asOf;
+
+      if (leftIsOverdue !== rightIsOverdue) {
+        return leftIsOverdue ? -1 : 1;
+      }
+
+      return left.dueAt.localeCompare(right.dueAt);
+    });
 }
