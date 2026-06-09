@@ -6,6 +6,7 @@
   "description": "Always-on job discovery and application automation scaffold.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/**/*.test.js",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js"
   },

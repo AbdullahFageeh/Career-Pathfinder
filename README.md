@@ -40,6 +40,7 @@ src/
 npm install
 npm run typecheck
 npm run build
+npm test
 ```
 
 ## Initial implementation target
