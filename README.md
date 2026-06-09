@@ -56,5 +56,6 @@ The first implementation milestone is the single-job pipeline:
 - `src/sources/arbeitsagentur.ts` fetches and normalizes Lane 1 listings from the official Arbeitsagentur jobs API.
 - `src/tailor/resumeTailor.ts` builds the first structured tailored resume draft from a candidate profile and job post.
 - `src/ats/scoreResume.ts` scores ATS readiness for a tailored resume and returns blockers plus suggested fixes.
+- `src/tracker/applicationTracker.ts` creates application records, stores status history, and manages notes plus follow-ups.
 - Each module directory currently exposes a focused stub entry point so implementation can grow without changing the top-level layout.
 - The runtime entry point is `src/index.ts`.

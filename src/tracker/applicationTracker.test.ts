@@ -1,0 +1,128 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import type { CandidateProfile, JobPosting } from "../shared/contracts.js";
+
+import { scoreAtsReadiness } from "../ats/index.js";
+import { buildTailoredResume } from "../tailor/index.js";
+import {
+  addApplicationNote,
+  addWorkerDecision,
+  attachAtsAssessmentToRecord,
+  attachTailoredResumeToRecord,
+  completeFollowUp,
+  createApplicationRecord,
+  getOutstandingFollowUps,
+  scheduleFollowUp,
+  updateApplicationStatus
+} from "./index.js";
+
+const sampleProfile: CandidateProfile = {
+  id: "abdullah-seed",
+  fullName: "Abdullah Fageeh",
+  headline:
+    "Installation, production, and site operations leader with delivery experience across complex live-event and venue environments.",
+  targetRoleFamilies: [
+    "Installation Manager",
+    "Production Manager",
+    "Site Operations",
+    "Site Manager",
+    "Venue Operations"
+  ],
+  certifications: [
+    "NEBOSH International General Certificate in Occupational Health and Safety",
+    "PMP Certification Training Course",
+    "Fundamentals of Artificial Intelligence"
+  ],
+  coreProofPoints: [
+    "6-venue build delivery",
+    "100% AutoCAD layout compliance",
+    "installations completed 20% ahead of schedule",
+    "setup accelerated by 30%",
+    "safety incidents reduced by 25%",
+    "Formula 1 venue operations supporting 50,000+ attendees"
+  ],
+  documents: [],
+  recurringAnswers: []
+};
+
+const siteManagerJob: JobPosting = {
+  id: "job-site-manager",
+  source: {
+    kind: "job-board",
+    name: "arbeitsagentur",
+    url: "https://example.com/site-manager"
+  },
+  title: "Site Manager (m/w/d)",
+  company: "ISS Integrated Facility Serv. GmbH",
+  location: "Hannover, Niedersachsen, Deutschland",
+  description:
+    "Lead site operations, venue readiness, contractor coordination, health and safety, and live event delivery for a high-footfall environment.",
+  detectedRoleFamily: "site-venue-operations",
+  tags: ["lane-1", "source:arbeitsagentur", "family:site-venue-operations", "matched-title:site-manager"],
+  discoveredAt: "2026-06-09T13:00:00.000Z"
+};
+
+test("createApplicationRecord initializes a discover-stage tracker record", () => {
+  const record = createApplicationRecord({
+    job: siteManagerJob,
+    note: "Discovered from lane 1 search."
+  });
+
+  assert.equal(record.id, "application:job-site-manager");
+  assert.equal(record.status, "discovered");
+  assert.equal(record.jobTitle, siteManagerJob.title);
+  assert.equal(record.company, siteManagerJob.company);
+  assert.equal(record.notes.length, 1);
+  assert.equal(record.statusHistory.length, 1);
+  assert.equal(record.statusHistory[0].status, "discovered");
+  assert.equal(record.followUps.length, 0);
+});
+
+test("tracker record advances through tailored and ATS-passed states", () => {
+  const baseRecord = createApplicationRecord({ job: siteManagerJob });
+  const tailoredResume = buildTailoredResume(sampleProfile, siteManagerJob);
+  const atsAssessment = scoreAtsReadiness(siteManagerJob, tailoredResume);
+
+  const tailoredRecord = attachTailoredResumeToRecord(baseRecord, tailoredResume);
+  const passedRecord = attachAtsAssessmentToRecord(tailoredRecord, atsAssessment);
+
+  assert.equal(tailoredRecord.status, "tailored");
+  assert.equal(tailoredRecord.resumeId, tailoredResume.id);
+  assert.equal(passedRecord.status, "ats-passed");
+  assert.equal(passedRecord.atsScore, atsAssessment.score);
+  assert.deepEqual(
+    passedRecord.statusHistory.map((entry) => entry.status),
+    ["discovered", "tailored", "ats-passed"]
+  );
+});
+
+test("tracker record stores notes, worker decisions, and follow-up lifecycle", () => {
+  const baseRecord = createApplicationRecord({ job: siteManagerJob });
+  const withStatus = updateApplicationStatus(baseRecord, "screened", {
+    at: "2026-06-10T10:00:00.000Z",
+    reason: "Initial screening complete."
+  });
+  const withNote = addApplicationNote(withStatus, "Needs manual review before apply.", {
+    at: "2026-06-10T10:05:00.000Z"
+  });
+  const withDecision = addWorkerDecision(withNote, "Paused auto-apply until recruiter details are verified.", {
+    at: "2026-06-10T10:06:00.000Z"
+  });
+  const withFollowUp = scheduleFollowUp(withDecision, {
+    dueAt: "2026-06-12T09:00:00.000Z",
+    reason: "Check for recruiter contact details.",
+    createdAt: "2026-06-10T10:07:00.000Z"
+  });
+  const outstanding = getOutstandingFollowUps(withFollowUp, "2026-06-11T09:00:00.000Z");
+  const completed = completeFollowUp(withFollowUp, withFollowUp.followUps[0].id, {
+    completedAt: "2026-06-12T09:05:00.000Z",
+    note: "Checked company page and LinkedIn."
+  });
+
+  assert.equal(withNote.notes.length, 1);
+  assert.equal(withDecision.workerDecisions.length, 1);
+  assert.equal(outstanding.length, 1);
+  assert.equal(completed.followUps[0].status, "completed");
+  assert.equal(completed.followUps[0].note, "Checked company page and LinkedIn.");
+});
