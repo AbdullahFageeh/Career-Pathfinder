@@ -6,42 +6,21 @@ import type {
   ApplicationRecord,
   AtsAssessment,
   JobPosting,
+  QueueJob,
   TailoredResume
 } from "../shared/contracts.js";
+import type {
+  PipelineStorage,
+  PipelineStorageSnapshot,
+  QueueClaimOptions,
+  StorageOptions
+} from "./types.js";
 
-const STORAGE_SCHEMA_VERSION = 1;
+const STORAGE_SCHEMA_VERSION = 2;
 const DEFAULT_STORAGE_PATH = resolve(process.cwd(), "data", "pipeline-store.json");
+const DEFAULT_QUEUE_LEASE_DURATION_MS = 5 * 60 * 1000;
 const snapshotUpdateQueues = new Map<string, Promise<void>>();
-
-export type FileBackedStorageOptions = {
-  storagePath?: string;
-};
-
-export type PipelineStorageSnapshot = {
-  schemaVersion: number;
-  jobs: Record<string, JobPosting>;
-  tailoredResumes: Record<string, TailoredResume>;
-  atsAssessments: Record<string, AtsAssessment>;
-  applicationRecords: Record<string, ApplicationRecord>;
-};
-
-export type PipelineStorage = {
-  storagePath: string;
-  readSnapshot: () => Promise<PipelineStorageSnapshot>;
-  getJobPosting: (jobId: string) => Promise<JobPosting | undefined>;
-  listJobPostings: () => Promise<JobPosting[]>;
-  upsertJobPosting: (job: JobPosting) => Promise<JobPosting>;
-  getTailoredResume: (resumeId: string) => Promise<TailoredResume | undefined>;
-  listTailoredResumes: () => Promise<TailoredResume[]>;
-  upsertTailoredResume: (resume: TailoredResume) => Promise<TailoredResume>;
-  getAtsAssessment: (assessmentId: string) => Promise<AtsAssessment | undefined>;
-  listAtsAssessments: () => Promise<AtsAssessment[]>;
-  upsertAtsAssessment: (assessment: AtsAssessment) => Promise<AtsAssessment>;
-  getApplicationRecord: (applicationId: string) => Promise<ApplicationRecord | undefined>;
-  getApplicationRecordByJobId: (jobId: string) => Promise<ApplicationRecord | undefined>;
-  listApplicationRecords: () => Promise<ApplicationRecord[]>;
-  upsertApplicationRecord: (applicationRecord: ApplicationRecord) => Promise<ApplicationRecord>;
-};
+export type FileBackedStorageOptions = StorageOptions;
 
 export function resolveDefaultStoragePath(storagePath?: string): string {
   return storagePath ? resolve(storagePath) : DEFAULT_STORAGE_PATH;
@@ -93,7 +72,24 @@ export function createFileBackedStorage(
       updateSnapshot(storagePath, async (snapshot) => {
         snapshot.applicationRecords[applicationRecord.id] = applicationRecord;
         return applicationRecord;
-      })
+      }),
+    getQueueJob: async (queueJobId) => (await readSnapshot(storagePath)).queueJobs[queueJobId],
+    getQueueJobByIdempotencyKey: async (idempotencyKey) =>
+      Object.values((await readSnapshot(storagePath)).queueJobs).find(
+        (queueJob) => queueJob.idempotencyKey === idempotencyKey
+      ),
+    listQueueJobs: async () =>
+      Object.values((await readSnapshot(storagePath)).queueJobs).sort(compareQueueJobs),
+    upsertQueueJob: async (queueJob) =>
+      updateSnapshot(storagePath, async (snapshot) => {
+        snapshot.queueJobs[queueJob.id] = queueJob;
+        return queueJob;
+      }),
+    claimNextQueueJob: async (options) => {
+      return updateSnapshot(storagePath, async (snapshot) =>
+        claimNextQueueJobFromSnapshot(snapshot, options)
+      );
+    }
   };
 }
 
@@ -161,7 +157,8 @@ function normalizeSnapshot(value: unknown): PipelineStorageSnapshot {
     jobs: toRecordMap<JobPosting>(value.jobs),
     tailoredResumes: toRecordMap<TailoredResume>(value.tailoredResumes),
     atsAssessments: toRecordMap<AtsAssessment>(value.atsAssessments),
-    applicationRecords: toRecordMap<ApplicationRecord>(value.applicationRecords)
+    applicationRecords: toRecordMap<ApplicationRecord>(value.applicationRecords),
+    queueJobs: toRecordMap<QueueJob>(value.queueJobs)
   };
 }
 
@@ -171,7 +168,8 @@ function createEmptySnapshot(): PipelineStorageSnapshot {
     jobs: {},
     tailoredResumes: {},
     atsAssessments: {},
-    applicationRecords: {}
+    applicationRecords: {},
+    queueJobs: {}
   };
 }
 
@@ -213,4 +211,72 @@ function compareAtsAssessments(left: AtsAssessment, right: AtsAssessment): numbe
 
 function compareApplicationRecords(left: ApplicationRecord, right: ApplicationRecord): number {
   return left.updatedAt.localeCompare(right.updatedAt) || left.id.localeCompare(right.id);
+}
+
+function claimNextQueueJobFromSnapshot(
+  snapshot: PipelineStorageSnapshot,
+  options: QueueClaimOptions
+): QueueJob | undefined {
+  const now = normalizeClaimTimestamp(options.now);
+  const claimableJob = Object.values(snapshot.queueJobs)
+    .filter((queueJob) => isQueueJobClaimable(queueJob, now, options.stages))
+    .sort(compareQueueJobs)[0];
+
+  if (!claimableJob) {
+    return undefined;
+  }
+
+  const leaseExpiresAt = new Date(
+    Date.parse(now) + (options.leaseDurationMs ?? DEFAULT_QUEUE_LEASE_DURATION_MS)
+  ).toISOString();
+  const claimedJob: QueueJob = {
+    ...claimableJob,
+    state: "processing",
+    attempts: claimableJob.attempts + 1,
+    workerId: options.workerId,
+    leaseExpiresAt,
+    updatedAt: now
+  };
+
+  snapshot.queueJobs[claimedJob.id] = claimedJob;
+  return claimedJob;
+}
+
+function isQueueJobClaimable(
+  queueJob: QueueJob,
+  now: string,
+  stages: QueueClaimOptions["stages"]
+): boolean {
+  if (stages && stages.length > 0 && !stages.includes(queueJob.stage)) {
+    return false;
+  }
+
+  if (queueJob.state === "completed" || queueJob.state === "dead-letter") {
+    return false;
+  }
+
+  if (queueJob.state === "processing") {
+    return (
+      typeof queueJob.leaseExpiresAt === "string" && queueJob.leaseExpiresAt <= now
+    );
+  }
+
+  return queueJob.scheduledFor <= now;
+}
+
+function normalizeClaimTimestamp(value: string | undefined): string {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? new Date().toISOString() : new Date(parsed).toISOString();
+}
+
+function compareQueueJobs(left: QueueJob, right: QueueJob): number {
+  return (
+    left.scheduledFor.localeCompare(right.scheduledFor) ||
+    left.createdAt.localeCompare(right.createdAt) ||
+    left.id.localeCompare(right.id)
+  );
 }
