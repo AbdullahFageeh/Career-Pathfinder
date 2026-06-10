@@ -206,6 +206,172 @@ test("prepareJobApplicationSubmission builds a ready Greenhouse request when req
   assert.equal(readFieldValue(result.prepared.fields, "data_compliance[gdpr_consent_given]"), "true");
 });
 
+test("prepareJobApplicationSubmission skips an optional multi-field cover letter question", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-cover-letter-"));
+  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const profile = createCandidateProfile(resumePath);
+  const record = createAtsReadyRecord(greenhouseJob);
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  await writeFile(resumePath, "resume-pdf-placeholder", "utf8");
+
+  const fetchImpl: typeof fetch = async () =>
+    jsonResponse({
+      questions: [
+        {
+          label: "First Name",
+          required: true,
+          fields: [{ name: "first_name", type: "input_text" }]
+        },
+        {
+          label: "Last Name",
+          required: true,
+          fields: [{ name: "last_name", type: "input_text" }]
+        },
+        {
+          label: "Email",
+          required: true,
+          fields: [{ name: "email", type: "input_text" }]
+        },
+        {
+          label: "Resume/CV",
+          required: true,
+          fields: [{ name: "resume", type: "input_file" }]
+        },
+        {
+          label: "Cover Letter",
+          required: false,
+          fields: [
+            { name: "cover_letter", type: "input_file" },
+            { name: "cover_letter_text", type: "textarea" }
+          ]
+        },
+        {
+          label: "Work authorization",
+          required: true,
+          fields: [
+            {
+              name: "work_authorization",
+              type: "multi_value_single_select",
+              values: [
+                { label: "Yes", value: "yes" },
+                { label: "No", value: "no" }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+  const result = await prepareJobApplicationSubmission(
+    greenhouseJob,
+    record,
+    profile,
+    tailoredResume,
+    {
+      mode: "supervised",
+      greenhouseJobBoardApiKey: "test-key",
+      fetchImpl,
+      now: "2026-06-10T08:10:00.000Z"
+    }
+  );
+
+  assert.equal(result.ready, true);
+  if (!result.ready) {
+    return;
+  }
+
+  assert.equal(readFieldValue(result.prepared.fields, "cover_letter"), undefined);
+  assert.equal(readFieldValue(result.prepared.fields, "cover_letter_text"), undefined);
+});
+
+test("prepareJobApplicationSubmission accepts a multi-select option label that contains a comma", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-multi-select-"));
+  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const profile = {
+    ...createCandidateProfile(resumePath),
+    recurringAnswers: [
+      ...createCandidateProfile(resumePath).recurringAnswers,
+      {
+        key: "information-on-data-protection",
+        question: "Information on data protection",
+        answer: "Yes, I acknowledge.",
+        source: {
+          kind: "manual" as const,
+          reference: "APPLICATION_REFERENCE.md"
+        }
+      }
+    ]
+  };
+  const record = createAtsReadyRecord(greenhouseJob);
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  await writeFile(resumePath, "resume-pdf-placeholder", "utf8");
+
+  const fetchImpl: typeof fetch = async () =>
+    jsonResponse({
+      questions: [
+        {
+          label: "First Name",
+          required: true,
+          fields: [{ name: "first_name", type: "input_text" }]
+        },
+        {
+          label: "Last Name",
+          required: true,
+          fields: [{ name: "last_name", type: "input_text" }]
+        },
+        {
+          label: "Email",
+          required: true,
+          fields: [{ name: "email", type: "input_text" }]
+        },
+        {
+          label: "Resume/CV",
+          required: true,
+          fields: [{ name: "resume", type: "input_file" }]
+        },
+        {
+          label: "Information on data protection\n",
+          required: true,
+          fields: [
+            {
+              name: "question_8710119101[]",
+              type: "multi_value_multi_select",
+              values: [{ label: "Yes, I acknowledge.", value: 60166509101 }]
+            }
+          ]
+        }
+      ]
+    });
+
+  const result = await prepareJobApplicationSubmission(
+    greenhouseJob,
+    record,
+    profile,
+    tailoredResume,
+    {
+      mode: "supervised",
+      greenhouseJobBoardApiKey: "test-key",
+      fetchImpl,
+      now: "2026-06-10T08:10:00.000Z"
+    }
+  );
+
+  assert.equal(result.ready, true);
+  if (!result.ready) {
+    return;
+  }
+
+  assert.deepEqual(readFieldValue(result.prepared.fields, "question_8710119101[]"), ["60166509101"]);
+});
+
 test("prepareJobApplicationSubmission allows a retry after a review-needed attempt", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-retry-"));
   const resumePath = join(tempDir, "abdullah-resume.pdf");

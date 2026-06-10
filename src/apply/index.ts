@@ -672,6 +672,9 @@ function resolveGreenhouseQuestionFields(
       ]
     };
   }
+  if (isOptionalCoverLetterQuestion(question)) {
+    return { fields: [] };
+  }
 
   if (question.fields.length > 1) {
     return {
@@ -780,6 +783,18 @@ function readCustomQuestionField(
         return question.required
           ? { reason: `Question "${question.label}" is required before submission.` }
           : { fields: [] };
+      }
+      const exactSelectedValue = readSelectValue(answer, field.values ?? []);
+
+      if (exactSelectedValue) {
+        return {
+          fields: [
+            {
+              name: field.name,
+              value: [exactSelectedValue]
+            }
+          ]
+        };
       }
 
       const selectedValues = splitMultiValueAnswer(answer)
@@ -945,6 +960,16 @@ function isResumeQuestion(question: GreenhouseQuestion): boolean {
   return (
     /resume|cv/i.test(question.label) ||
     question.fields.some((field) => field.name === "resume" || field.name === "resume_text")
+  );
+}
+
+function isOptionalCoverLetterQuestion(question: GreenhouseQuestion): boolean {
+  return (
+    !question.required &&
+    (/cover letter/i.test(question.label) ||
+      question.fields.some(
+        (field) => field.name === "cover_letter" || field.name === "cover_letter_text"
+      ))
   );
 }
 
