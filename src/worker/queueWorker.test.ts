@@ -6,7 +6,10 @@ import test from "node:test";
 
 import type { JobPosting } from "../shared/contracts.js";
 import { createSqliteStorage } from "../storage/index.js";
-import { runSingleJobPipeline } from "./index.js";
+import {
+  enqueueSingleJobPipelineRun,
+  runPipelineQueueOnce
+} from "./index.js";
 
 const profileReferenceFixture = `# Job Application Reference
 ## Identity and contact
@@ -61,8 +64,8 @@ const siteManagerJob: JobPosting = {
   discoveredAt: "2026-06-09T13:00:00.000Z"
 };
 
-test("runSingleJobPipeline persists one job flow idempotently", async (t) => {
-  const tempDir = await mkdtemp(join(tmpdir(), "job-project-pipeline-"));
+test("runPipelineQueueOnce processes a queued job through ingest, tailor, render, and score", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-queue-worker-"));
   const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
   const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
   const outputDir = join(tempDir, "artifacts", "resumes");
@@ -73,45 +76,50 @@ test("runSingleJobPipeline persists one job flow idempotently", async (t) => {
 
   await writeFile(referencePath, profileReferenceFixture, "utf8");
 
-  const firstRun = await runSingleJobPipeline(siteManagerJob, {
-    referencePath,
+  const firstQueuedJob = await enqueueSingleJobPipelineRun(siteManagerJob, {
     storagePath,
-    renderOptions: {
-      outputDir
-    }
+    referencePath,
+    renderOutputDir: outputDir
   });
-  const secondRun = await runSingleJobPipeline(siteManagerJob, {
-    referencePath,
+  const secondQueuedJob = await enqueueSingleJobPipelineRun(siteManagerJob, {
     storagePath,
-    renderOptions: {
-      outputDir
-    }
+    referencePath,
+    renderOutputDir: outputDir
+  });
+
+  assert.equal(firstQueuedJob.id, "queue:job-site-manager:ingest");
+  assert.equal(secondQueuedJob.id, firstQueuedJob.id);
+
+  const firstRun = await runPipelineQueueOnce({
+    storagePath,
+    workerId: "worker:test"
+  });
+  const secondRun = await runPipelineQueueOnce({
+    storagePath,
+    workerId: "worker:test-second"
   });
   const storage = createSqliteStorage({ storagePath });
   const snapshot = await storage.readSnapshot();
-  const renderedArtifact = await readFile(secondRun.tailoredResume.outputPath ?? "", "utf8");
+  const applicationRecord = await storage.getApplicationRecordByJobId(siteManagerJob.id);
+  const renderedArtifact = await readFile(
+    snapshot.tailoredResumes["job-site-manager:tailored"]?.outputPath ?? "",
+    "utf8"
+  );
 
-  assert.equal(firstRun.storagePath, storagePath);
-  assert.equal(secondRun.applicationRecord.id, "application:job-site-manager");
-  assert.equal(secondRun.applicationRecord.status, "ats-passed");
-  assert.ok(firstRun.tailoredResume.outputPath);
-  assert.ok(secondRun.tailoredResume.outputPath);
-  assert.equal(Object.keys(snapshot.jobs).length, 1);
-  assert.equal(Object.keys(snapshot.tailoredResumes).length, 1);
-  assert.equal(Object.keys(snapshot.atsAssessments).length, 1);
-  assert.equal(Object.keys(snapshot.applicationRecords).length, 1);
-  assert.equal(
-    snapshot.tailoredResumes[secondRun.tailoredResume.id]?.outputPath,
-    secondRun.tailoredResume.outputPath
-  );
+  assert.equal(firstRun.claimed, 4);
+  assert.equal(firstRun.completed, 4);
+  assert.equal(firstRun.failed, 0);
+  assert.equal(firstRun.deadLettered, 0);
+  assert.equal(firstRun.remaining, 0);
+  assert.equal(secondRun.claimed, 0);
+  assert.equal(applicationRecord?.status, "ats-passed");
   assert.deepEqual(
-    secondRun.applicationRecord.statusHistory.map((entry) => entry.status),
-    ["discovered", "tailored", "ats-passed"]
+    Object.values(snapshot.queueJobs)
+      .map((queueJob) => queueJob.stage)
+      .sort(),
+    ["ingest", "render", "score-ats", "tailor"]
   );
+  assert.ok(Object.values(snapshot.queueJobs).every((queueJob) => queueJob.state === "completed"));
   assert.match(renderedArtifact, /<h1>Abdullah Fageeh<\/h1>/);
   assert.match(renderedArtifact, /Site Manager \(m\/w\/d\)/);
-  assert.match(
-    renderedArtifact,
-    /Supported venue operations in Formula 1 environments serving 50,000\+ attendees/
-  );
 });

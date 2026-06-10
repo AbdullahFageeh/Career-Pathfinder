@@ -1,5 +1,16 @@
 export {
+  enqueueSingleJobPipelineRun,
+  runPipelineQueueOnce,
+  type EnqueueSingleJobPipelineRunOptions,
+  type PipelineQueueRunOptions,
+  type PipelineQueueRunResult
+} from "./queueWorker.js";
+export {
   runSingleJobPipeline,
+  persistIngestedJobPosting,
+  renderStoredTailoredResume,
+  scoreStoredTailoredResume,
+  tailorJobPosting,
   type SingleJobPipelineOptions,
   type SingleJobPipelineResult
 } from "./singleJobPipeline.js";

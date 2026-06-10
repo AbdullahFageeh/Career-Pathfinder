@@ -1,5 +1,13 @@
 export type SourceReferenceKind = "cv" | "linkedin" | "manual";
 
+export type JsonPrimitive = string | number | boolean | null;
+
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+
+export type JsonObject = {
+  [key: string]: JsonValue;
+};
+
 export type SourceReference = {
   kind: SourceReferenceKind;
   reference: string;
@@ -216,6 +224,7 @@ export type QueueStage =
   | "discover"
   | "ingest"
   | "tailor"
+  | "render"
   | "score-ats"
   | "enrich-contact"
   | "apply"
@@ -225,10 +234,19 @@ export type QueueState = "pending" | "processing" | "completed" | "failed" | "de
 
 export type QueueJob = {
   id: string;
+  jobId: string;
   applicationId: string;
   stage: QueueStage;
   state: QueueState;
   attempts: number;
+  maxAttempts: number;
+  idempotencyKey: string;
+  payload?: JsonObject;
   lastError?: string;
+  workerId?: string;
+  leaseExpiresAt?: string;
   scheduledFor: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
 };

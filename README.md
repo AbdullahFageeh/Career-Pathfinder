@@ -42,8 +42,9 @@ npm install
 npm run typecheck
 npm run build
 npm test
+npm run worker:once
 ```
-The first persisted pipeline reads the runtime candidate profile from local `APPLICATION_REFERENCE.md`, writes runtime state under ignored `data/`, and saves rendered resume artifacts under ignored `artifacts/`.
+The current runtime foundation reads the candidate profile from local `APPLICATION_REFERENCE.md`, writes durable state under ignored `data/pipeline-store.sqlite`, and saves rendered resume artifacts under ignored `artifacts/`.
 
 ## Initial implementation target
 The first implementation milestone is the single-job pipeline:
@@ -56,7 +57,9 @@ The first implementation milestone is the single-job pipeline:
 ## Architecture notes
 - `src/profile/referenceProfile.ts` loads a runtime candidate profile from the local application reference markdown file.
 - `src/ingest/ingestJobPosting.ts` canonicalizes source output into a stable `JobPosting`.
-- `src/storage/fileStore.ts` persists jobs, tailored resumes, ATS assessments, and application records in a local file-backed store.
+- `src/storage/sqliteStore.ts` is the default durable runtime store for jobs, resumes, ATS assessments, application records, and queue jobs.
+- `src/storage/fileStore.ts` remains available as a simple JSON-backed fallback store for narrow local flows and tests.
+- `src/queue/pipelineQueue.ts` creates idempotent stage jobs for `ingest -> tailor -> render -> score-ats`.
 - `src/render/resumeRenderer.ts` renders ATS-safe single-column HTML resume artifacts under ignored local artifact storage.
 - `src/shared/contracts.ts` defines the current shared domain types.
 - `src/policy/targetTitles.ts` stores the first exact Lane 1 target-job-title shortlist for direct-fit searches.
@@ -65,5 +68,6 @@ The first implementation milestone is the single-job pipeline:
 - `src/ats/scoreResume.ts` scores ATS readiness for a tailored resume and returns blockers plus suggested fixes.
 - `src/tracker/applicationTracker.ts` creates application records, stores status history, and manages notes plus follow-ups.
 - `src/worker/singleJobPipeline.ts` runs the first persisted `ingest -> tailor -> render -> ATS -> tracker` flow for one job.
+- `src/worker/queueWorker.ts` runs the new one-shot queued worker path and processes pending stage jobs once per invocation.
 - Each module directory currently exposes a focused stub entry point so implementation can grow without changing the top-level layout.
 - The runtime entry point is `src/index.ts`.

@@ -30,7 +30,7 @@ export const architectureSummary: ModuleSummary[] = [
   },
   {
     key: "queue",
-    summary: "Durable state-machine queue, retries, and idempotent work dispatch."
+    summary: "Durable stage queue, worker retries, leases, and idempotent dispatch."
   },
   {
     key: "worker",
@@ -54,7 +54,7 @@ export const architectureSummary: ModuleSummary[] = [
   },
   {
     key: "storage",
-    summary: "Persistence for jobs, resumes, ATS scores, queue state, and logs."
+    summary: "SQLite-backed persistence for jobs, resumes, ATS scores, queue state, and logs."
   },
   {
     key: "notify",

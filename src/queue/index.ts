@@ -1,3 +1,13 @@
+export {
+  PIPELINE_QUEUE_STAGES,
+  createNextPipelineStageJob,
+  enqueueSingleJobPipeline,
+  getNextPipelineStage,
+  markQueueJobCompleted,
+  markQueueJobFailed,
+  type EnqueueSingleJobPipelineOptions,
+  type SingleJobPipelineQueuePayload
+} from "./pipelineQueue.js";
 export const queueModule = {
   key: "queue",
   summary: "Own the durable pipeline state machine and retry workflow.",
