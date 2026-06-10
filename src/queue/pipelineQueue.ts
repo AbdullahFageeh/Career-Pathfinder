@@ -35,8 +35,18 @@ export async function enqueueSingleJobPipeline(
   input: IngestJobPostingInput,
   options: EnqueueSingleJobPipelineOptions = {}
 ): Promise<QueueJob> {
+  const existingQueueJobs = await storage.listQueueJobs();
+  const activeIngestQueueJob = findActiveQueueJob(existingQueueJobs, input.id, "ingest");
+
+  if (activeIngestQueueJob) {
+    return {
+      ...activeIngestQueueJob,
+      runNumber: readQueueJobRunNumber(activeIngestQueueJob)
+    };
+  }
   const queueJob = createPipelineQueueJob({
     stage: "ingest",
+    runNumber: getNextRunNumber(existingQueueJobs, input.id),
     jobId: input.id,
     applicationId: `application:${input.id}`,
     payload: {
@@ -65,6 +75,7 @@ export function createNextPipelineStageJob(
 ): QueueJob {
   return createPipelineQueueJob({
     stage: nextStage,
+    runNumber: readQueueJobRunNumber(queueJob),
     jobId: queueJob.jobId,
     applicationId: queueJob.applicationId,
     payload,
@@ -99,6 +110,7 @@ export function markQueueJobCompleted(
 
   return {
     ...queueJob,
+    runNumber: readQueueJobRunNumber(queueJob),
     state: "completed",
     workerId: undefined,
     leaseExpiresAt: undefined,
@@ -121,6 +133,7 @@ export function markQueueJobFailed(
   if (queueJob.attempts >= queueJob.maxAttempts) {
     return {
       ...queueJob,
+      runNumber: readQueueJobRunNumber(queueJob),
       state: "dead-letter",
       lastError: errorMessage,
       workerId: undefined,
@@ -131,6 +144,7 @@ export function markQueueJobFailed(
 
   return {
     ...queueJob,
+    runNumber: readQueueJobRunNumber(queueJob),
     state: "failed",
     lastError: errorMessage,
     workerId: undefined,
@@ -158,6 +172,7 @@ async function enqueuePipelineQueueJob(
 
 function createPipelineQueueJob(input: {
   stage: (typeof PIPELINE_QUEUE_STAGES)[number];
+  runNumber: number;
   jobId: string;
   applicationId: string;
   payload: SingleJobPipelineQueuePayload;
@@ -169,14 +184,15 @@ function createPipelineQueueJob(input: {
   const scheduledFor = normalizeTimestamp(input.scheduledFor ?? input.at);
 
   return {
-    id: `queue:${input.jobId}:${input.stage}`,
+    id: `queue:${input.jobId}:run-${input.runNumber}:${input.stage}`,
+    runNumber: input.runNumber,
     jobId: input.jobId,
     applicationId: input.applicationId,
     stage: input.stage,
     state: "pending",
     attempts: 0,
     maxAttempts: input.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
-    idempotencyKey: `pipeline:${input.jobId}:${input.stage}`,
+    idempotencyKey: `pipeline:${input.jobId}:run-${input.runNumber}:${input.stage}`,
     payload: toPayloadObject(input.payload),
     scheduledFor,
     createdAt,
@@ -195,4 +211,52 @@ function normalizeTimestamp(value: string | undefined): string {
 
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? new Date().toISOString() : new Date(parsed).toISOString();
+}
+
+function findActiveQueueJob(
+  queueJobs: QueueJob[],
+  jobId: string,
+  stage: (typeof PIPELINE_QUEUE_STAGES)[number]
+): QueueJob | undefined {
+  return queueJobs
+    .filter(
+      (queueJob) =>
+        queueJob.jobId === jobId &&
+        queueJob.stage === stage &&
+        !isTerminalQueueState(queueJob.state)
+    )
+    .sort(
+      (left, right) =>
+        readQueueJobRunNumber(right) - readQueueJobRunNumber(left) ||
+        right.updatedAt.localeCompare(left.updatedAt)
+    )[0];
+}
+
+function getNextRunNumber(queueJobs: QueueJob[], jobId: string): number {
+  return (
+    queueJobs
+      .filter((queueJob) => queueJob.jobId === jobId && queueJob.stage === "ingest")
+      .reduce(
+        (maxRunNumber, queueJob) => Math.max(maxRunNumber, readQueueJobRunNumber(queueJob)),
+        0
+      ) + 1
+  );
+}
+
+function readQueueJobRunNumber(queueJob: Pick<QueueJob, "id" | "runNumber">): number {
+  if (Number.isInteger(queueJob.runNumber) && queueJob.runNumber > 0) {
+    return queueJob.runNumber;
+  }
+
+  const parsedRunNumber = queueJob.id.match(/:run-(\d+):/)?.[1];
+
+  if (!parsedRunNumber) {
+    return 1;
+  }
+
+  return Number(parsedRunNumber);
+}
+
+function isTerminalQueueState(queueState: QueueJob["state"]): boolean {
+  return queueState === "completed" || queueState === "dead-letter";
 }

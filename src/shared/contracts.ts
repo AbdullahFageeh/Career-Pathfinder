@@ -234,6 +234,7 @@ export type QueueState = "pending" | "processing" | "completed" | "failed" | "de
 
 export type QueueJob = {
   id: string;
+  runNumber: number;
   jobId: string;
   applicationId: string;
   stage: QueueStage;

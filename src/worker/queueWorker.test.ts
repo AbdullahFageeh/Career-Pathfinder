@@ -86,8 +86,8 @@ test("runPipelineQueueOnce processes a queued job through ingest, tailor, render
     referencePath,
     renderOutputDir: outputDir
   });
-
-  assert.equal(firstQueuedJob.id, "queue:job-site-manager:ingest");
+  assert.equal(firstQueuedJob.id, "queue:job-site-manager:run-1:ingest");
+  assert.equal(firstQueuedJob.runNumber, 1);
   assert.equal(secondQueuedJob.id, firstQueuedJob.id);
 
   const firstRun = await runPipelineQueueOnce({
@@ -122,4 +122,54 @@ test("runPipelineQueueOnce processes a queued job through ingest, tailor, render
   assert.ok(Object.values(snapshot.queueJobs).every((queueJob) => queueJob.state === "completed"));
   assert.match(renderedArtifact, /<h1>Abdullah Fageeh<\/h1>/);
   assert.match(renderedArtifact, /Site Manager \(m\/w\/d\)/);
+});
+
+test("enqueueSingleJobPipelineRun allows a completed job to be re-enqueued as a new run", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-queue-rerun-"));
+  const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
+  const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
+  const outputDir = join(tempDir, "artifacts", "resumes");
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  await writeFile(referencePath, profileReferenceFixture, "utf8");
+
+  await enqueueSingleJobPipelineRun(siteManagerJob, {
+    storagePath,
+    referencePath,
+    renderOutputDir: outputDir
+  });
+  const firstRun = await runPipelineQueueOnce({
+    storagePath,
+    workerId: "worker:first-run"
+  });
+  const rerunQueueJob = await enqueueSingleJobPipelineRun(siteManagerJob, {
+    storagePath,
+    referencePath,
+    renderOutputDir: outputDir
+  });
+  const secondRun = await runPipelineQueueOnce({
+    storagePath,
+    workerId: "worker:second-run"
+  });
+  const storage = createSqliteStorage({ storagePath });
+  const snapshot = await storage.readSnapshot();
+
+  assert.equal(firstRun.claimed, 4);
+  assert.equal(firstRun.completed, 4);
+  assert.equal(rerunQueueJob.id, "queue:job-site-manager:run-2:ingest");
+  assert.equal(rerunQueueJob.runNumber, 2);
+  assert.equal(secondRun.claimed, 4);
+  assert.equal(secondRun.completed, 4);
+  assert.equal(Object.keys(snapshot.queueJobs).length, 8);
+  assert.deepEqual(
+    Object.values(snapshot.queueJobs)
+      .filter((queueJob) => queueJob.stage === "ingest")
+      .map((queueJob) => queueJob.runNumber)
+      .sort((left, right) => left - right),
+    [1, 2]
+  );
+  assert.ok(Object.values(snapshot.queueJobs).every((queueJob) => queueJob.state === "completed"));
 });

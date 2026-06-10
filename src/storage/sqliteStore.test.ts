@@ -121,14 +121,15 @@ const sampleApplicationRecord: ApplicationRecord = {
 };
 
 const sampleQueueJob: QueueJob = {
-  id: "queue:job-site-manager:tailor",
+  id: "queue:job-site-manager:run-1:tailor",
+  runNumber: 1,
   jobId: sampleJob.id,
   applicationId: "application:job-site-manager",
   stage: "tailor",
   state: "pending",
   attempts: 0,
   maxAttempts: 3,
-  idempotencyKey: "pipeline:job-site-manager:tailor",
+  idempotencyKey: "pipeline:job-site-manager:run-1:tailor",
   payload: {
     referencePath: "/tmp/APPLICATION_REFERENCE.md"
   },
@@ -139,9 +140,9 @@ const sampleQueueJob: QueueJob = {
 
 const sampleQueueJobTwo: QueueJob = {
   ...sampleQueueJob,
-  id: "queue:job-site-manager:render",
+  id: "queue:job-site-manager:run-1:render",
   stage: "render",
-  idempotencyKey: "pipeline:job-site-manager:render",
+  idempotencyKey: "pipeline:job-site-manager:run-1:render",
   scheduledFor: "2026-06-09T13:04:00.000Z",
   createdAt: "2026-06-09T13:04:00.000Z",
   updatedAt: "2026-06-09T13:04:00.000Z"
