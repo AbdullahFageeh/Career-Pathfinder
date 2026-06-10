@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
@@ -10,6 +11,7 @@ import type {
 
 const STORAGE_SCHEMA_VERSION = 1;
 const DEFAULT_STORAGE_PATH = resolve(process.cwd(), "data", "pipeline-store.json");
+const snapshotUpdateQueues = new Map<string, Promise<void>>();
 
 export type FileBackedStorageOptions = {
   storagePath?: string;
@@ -112,10 +114,29 @@ async function updateSnapshot<Result>(
   storagePath: string,
   updater: (snapshot: PipelineStorageSnapshot) => Promise<Result>
 ): Promise<Result> {
-  const snapshot = await readSnapshot(storagePath);
-  const result = await updater(snapshot);
-  await writeSnapshot(storagePath, snapshot);
-  return result;
+  const previousQueue = snapshotUpdateQueues.get(storagePath) ?? Promise.resolve();
+  let releaseCurrentQueue!: () => void;
+  const currentQueue = new Promise<void>((resolve) => {
+    releaseCurrentQueue = resolve;
+  });
+  const queueTail = previousQueue.catch(() => undefined).then(() => currentQueue);
+
+  snapshotUpdateQueues.set(storagePath, queueTail);
+
+  await previousQueue.catch(() => undefined);
+
+  try {
+    const snapshot = await readSnapshot(storagePath);
+    const result = await updater(snapshot);
+    await writeSnapshot(storagePath, snapshot);
+    return result;
+  } finally {
+    releaseCurrentQueue();
+
+    if (snapshotUpdateQueues.get(storagePath) === queueTail) {
+      snapshotUpdateQueues.delete(storagePath);
+    }
+  }
 }
 
 async function writeSnapshot(
@@ -123,7 +144,7 @@ async function writeSnapshot(
   snapshot: PipelineStorageSnapshot
 ): Promise<void> {
   const normalizedSnapshot = normalizeSnapshot(snapshot);
-  const tempPath = `${storagePath}.${process.pid}.${Date.now()}.tmp`;
+  const tempPath = `${storagePath}.${process.pid}.${randomUUID()}.tmp`;
 
   await mkdir(dirname(storagePath), { recursive: true });
   await writeFile(tempPath, `${JSON.stringify(normalizedSnapshot, null, 2)}\n`, "utf8");

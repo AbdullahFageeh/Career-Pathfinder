@@ -29,6 +29,21 @@ const sampleJob: JobPosting = {
   discoveredAt: "2026-06-09T13:00:00.000Z"
 };
 
+const sampleJobTwo: JobPosting = {
+  ...sampleJob,
+  id: "job-production-manager",
+  title: "Production Manager (m/w/d)",
+  company: "Messe Build Systems GmbH",
+  source: {
+    kind: "job-board",
+    name: "arbeitsagentur",
+    url: "https://example.com/production-manager"
+  },
+  detectedRoleFamily: "production-delivery",
+  tags: ["lane-1", "source:arbeitsagentur", "family:production-delivery"],
+  discoveredAt: "2026-06-09T13:30:00.000Z"
+};
+
 const sampleResume: TailoredResume = {
   id: "job-site-manager:tailored",
   jobId: sampleJob.id,
@@ -151,4 +166,29 @@ test("file-backed storage persists core pipeline artifacts across instances", as
     await secondStorage.getApplicationRecordByJobId(sampleJob.id),
     sampleApplicationRecord
   );
+});
+
+test("file-backed storage serializes concurrent upserts for one store", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-storage-race-"));
+  const storagePath = join(tempDir, "pipeline-store.json");
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  const storage = createFileBackedStorage({ storagePath });
+
+  await Promise.all([
+    storage.upsertJobPosting(sampleJob),
+    storage.upsertJobPosting(sampleJobTwo)
+  ]);
+
+  const snapshot = await storage.readSnapshot();
+
+  assert.deepEqual(Object.keys(snapshot.jobs).sort(), [
+    "job-production-manager",
+    "job-site-manager"
+  ]);
+  assert.deepEqual(await storage.getJobPosting(sampleJob.id), sampleJob);
+  assert.deepEqual(await storage.getJobPosting(sampleJobTwo.id), sampleJobTwo);
 });
