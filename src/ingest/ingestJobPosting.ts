@@ -1,4 +1,8 @@
-import type { JobPosting, JobSourceKind } from "../shared/contracts.js";
+import type {
+  ApplicationPlatform,
+  JobPosting,
+  JobSourceKind
+} from "../shared/contracts.js";
 
 export type RawJobPostingInput = {
   id: string;
@@ -12,6 +16,13 @@ export type RawJobPostingInput = {
   location?: string;
   description: string;
   detectedRoleFamily?: string;
+  applicationTarget?: {
+    url?: string;
+    platform?: ApplicationPlatform;
+    boardToken?: string;
+    jobId?: string;
+    submissionUrl?: string;
+  };
   tags?: string[];
   discoveredAt?: string;
 };
@@ -42,11 +53,38 @@ export function ingestJobPosting(
     location: normalizeOptionalLine(input.location),
     description: requireBlock(input.description, "Job description"),
     detectedRoleFamily,
+    applicationTarget: normalizeApplicationTarget(input.applicationTarget),
     tags,
     discoveredAt:
       normalizeTimestamp(input.discoveredAt) ??
       normalizeTimestamp(options.defaultDiscoveredAt) ??
       new Date().toISOString()
+  };
+}
+
+function normalizeApplicationTarget(
+  value: RawJobPostingInput["applicationTarget"] | JobPosting["applicationTarget"] | undefined
+): JobPosting["applicationTarget"] {
+  if (!value) {
+    return undefined;
+  }
+
+  const url = normalizeOptionalLine(value.url);
+  const boardToken = normalizeOptionalLine(value.boardToken);
+  const jobId = normalizeOptionalLine(value.jobId);
+  const submissionUrl = normalizeOptionalLine(value.submissionUrl);
+  const platform = normalizeApplicationPlatform(value.platform);
+
+  if (!url && !platform && !boardToken && !jobId && !submissionUrl) {
+    return undefined;
+  }
+
+  return {
+    ...(url ? { url } : {}),
+    ...(platform ? { platform } : {}),
+    ...(boardToken ? { boardToken } : {}),
+    ...(jobId ? { jobId } : {}),
+    ...(submissionUrl ? { submissionUrl } : {})
   };
 }
 
@@ -100,6 +138,12 @@ function normalizeOptionalLine(value: string | undefined): string | undefined {
 
   const normalized = normalizeWhitespace(value);
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeApplicationPlatform(
+  value: ApplicationPlatform | undefined
+): ApplicationPlatform | undefined {
+  return value === "greenhouse" ? value : undefined;
 }
 
 function normalizeWhitespace(value: string): string {

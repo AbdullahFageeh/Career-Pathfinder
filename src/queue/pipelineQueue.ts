@@ -1,5 +1,6 @@
+import type { GreenhouseDataConsent } from "../apply/index.js";
 import type { IngestJobPostingInput } from "../ingest/index.js";
-import type { QueueJob } from "../shared/contracts.js";
+import type { AutomationMode, QueueJob } from "../shared/contracts.js";
 import type { PipelineStorage } from "../storage/index.js";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
@@ -9,7 +10,8 @@ export const PIPELINE_QUEUE_STAGES = [
   "ingest",
   "tailor",
   "render",
-  "score-ats"
+  "score-ats",
+  "apply"
 ] as const;
 
 export type SingleJobPipelineQueuePayload = {
@@ -18,6 +20,8 @@ export type SingleJobPipelineQueuePayload = {
   profileId?: string;
   initialApplicationNote?: string;
   renderOutputDir?: string;
+  applyMode?: AutomationMode;
+  dataConsent?: GreenhouseDataConsent;
 };
 
 export type EnqueueSingleJobPipelineOptions = {
@@ -27,6 +31,8 @@ export type EnqueueSingleJobPipelineOptions = {
   profileId?: string;
   initialApplicationNote?: string;
   renderOutputDir?: string;
+  applyMode?: AutomationMode;
+  dataConsent?: GreenhouseDataConsent;
   maxAttempts?: number;
 };
 
@@ -44,6 +50,7 @@ export async function enqueueSingleJobPipeline(
       runNumber: readQueueJobRunNumber(activeIngestQueueJob)
     };
   }
+
   const queueJob = createPipelineQueueJob({
     stage: "ingest",
     runNumber: getNextRunNumber(existingQueueJobs, input.id),
@@ -54,7 +61,9 @@ export async function enqueueSingleJobPipeline(
       referencePath: options.referencePath,
       profileId: options.profileId,
       initialApplicationNote: options.initialApplicationNote,
-      renderOutputDir: options.renderOutputDir
+      renderOutputDir: options.renderOutputDir,
+      applyMode: options.applyMode,
+      dataConsent: options.dataConsent
     },
     at: options.at,
     scheduledFor: options.scheduledFor,
@@ -86,7 +95,8 @@ export function createNextPipelineStageJob(
 }
 
 export function getNextPipelineStage(
-  stage: QueueJob["stage"]
+  stage: QueueJob["stage"],
+  payload: Pick<SingleJobPipelineQueuePayload, "applyMode"> = {}
 ): (typeof PIPELINE_QUEUE_STAGES)[number] | undefined {
   switch (stage) {
     case "ingest":
@@ -95,6 +105,8 @@ export function getNextPipelineStage(
       return "render";
     case "render":
       return "score-ats";
+    case "score-ats":
+      return shouldRunApplyStage(payload) ? "apply" : undefined;
     default:
       return undefined;
   }
@@ -255,6 +267,12 @@ function readQueueJobRunNumber(queueJob: Pick<QueueJob, "id" | "runNumber">): nu
   }
 
   return Number(parsedRunNumber);
+}
+
+function shouldRunApplyStage(
+  payload: Pick<SingleJobPipelineQueuePayload, "applyMode">
+): boolean {
+  return payload.applyMode === "supervised" || payload.applyMode === "full-auto";
 }
 
 function isTerminalQueueState(queueState: QueueJob["state"]): boolean {

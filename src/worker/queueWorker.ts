@@ -10,8 +10,9 @@ import {
   type SingleJobPipelineQueuePayload
 } from "../queue/index.js";
 import { createSqliteStorage, type PipelineStorage, type StorageOptions } from "../storage/index.js";
-import type { QueueJob } from "../shared/contracts.js";
+import type { AutomationMode, QueueJob } from "../shared/contracts.js";
 import {
+  applyToStoredJob,
   persistIngestedJobPosting,
   renderStoredTailoredResume,
   scoreStoredTailoredResume,
@@ -33,6 +34,8 @@ export type PipelineQueueRunOptions = StorageOptions & {
   retryDelayMs?: number;
   maxJobs?: number;
   now?: string;
+  greenhouseJobBoardApiKey?: string;
+  applyFetchImpl?: typeof fetch;
 };
 
 export type PipelineQueueRunResult = {
@@ -57,6 +60,8 @@ export async function enqueueSingleJobPipelineRun(
     profileId: options.profileId,
     initialApplicationNote: options.initialApplicationNote,
     renderOutputDir: options.renderOutputDir,
+    applyMode: options.applyMode,
+    dataConsent: options.dataConsent,
     maxAttempts: options.maxAttempts
   });
 }
@@ -87,7 +92,7 @@ export async function runPipelineQueueOnce(
     claimed += 1;
 
     try {
-      await processPipelineQueueJob(storage, queueJob);
+      await processPipelineQueueJob(storage, queueJob, options);
       await storage.upsertQueueJob(
         markQueueJobCompleted(queueJob, {
           at: options.now
@@ -124,10 +129,11 @@ export async function runPipelineQueueOnce(
 
 async function processPipelineQueueJob(
   storage: PipelineStorage,
-  queueJob: QueueJob
+  queueJob: QueueJob,
+  runOptions: PipelineQueueRunOptions
 ): Promise<void> {
   const payload = normalizeQueuePayload(queueJob);
-  const stageOptions = createStageOptions(storage, payload);
+  const stageOptions = createStageOptions(storage, payload, runOptions);
 
   switch (queueJob.stage) {
     case "ingest": {
@@ -156,6 +162,13 @@ async function processPipelineQueueJob(
       const job = await requireStoredJob(storage, queueJob.jobId);
       const tailoredResume = await requireStoredTailoredResume(storage, queueJob.jobId);
       await scoreStoredTailoredResume(job, tailoredResume, stageOptions);
+      await enqueueNextStage(storage, queueJob, payload);
+      return;
+    }
+    case "apply": {
+      const job = await requireStoredJob(storage, queueJob.jobId);
+      const tailoredResume = await requireStoredTailoredResume(storage, queueJob.jobId);
+      await applyToStoredJob(job, tailoredResume, stageOptions);
       return;
     }
     default:
@@ -168,7 +181,7 @@ async function enqueueNextStage(
   queueJob: QueueJob,
   payload: SingleJobPipelineQueuePayload
 ): Promise<void> {
-  const nextStage = getNextPipelineStage(queueJob.stage);
+  const nextStage = getNextPipelineStage(queueJob.stage, payload);
 
   if (!nextStage) {
     return;
@@ -186,7 +199,8 @@ async function enqueueNextStage(
 
 function createStageOptions(
   storage: PipelineStorage,
-  payload: SingleJobPipelineQueuePayload
+  payload: SingleJobPipelineQueuePayload,
+  runOptions: PipelineQueueRunOptions
 ): SingleJobPipelineStageOptions {
   return {
     storage,
@@ -196,6 +210,15 @@ function createStageOptions(
     renderOptions: payload.renderOutputDir
       ? {
           outputDir: payload.renderOutputDir
+        }
+      : undefined,
+    applyOptions: payload.applyMode
+      ? {
+          mode: payload.applyMode,
+          dataConsent: payload.dataConsent,
+          greenhouseJobBoardApiKey: runOptions.greenhouseJobBoardApiKey,
+          fetchImpl: runOptions.applyFetchImpl,
+          now: runOptions.now
         }
       : undefined
   };
@@ -213,7 +236,9 @@ function normalizeQueuePayload(queueJob: QueueJob): SingleJobPipelineQueuePayloa
     referencePath: readOptionalString(payload.referencePath),
     profileId: readOptionalString(payload.profileId),
     initialApplicationNote: readOptionalString(payload.initialApplicationNote),
-    renderOutputDir: readOptionalString(payload.renderOutputDir)
+    renderOutputDir: readOptionalString(payload.renderOutputDir),
+    applyMode: readAutomationMode(payload.applyMode),
+    dataConsent: readGreenhouseDataConsent(payload.dataConsent)
   };
 }
 
@@ -252,6 +277,30 @@ function resolveQueueStorage(
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function readAutomationMode(value: unknown): AutomationMode | undefined {
+  return value === "observe" || value === "supervised" || value === "full-auto"
+    ? value
+    : undefined;
+}
+
+function readGreenhouseDataConsent(
+  value: unknown
+): SingleJobPipelineQueuePayload["dataConsent"] | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return {
+    gdprConsentGiven: readOptionalBoolean(value.gdprConsentGiven),
+    gdprProcessingConsentGiven: readOptionalBoolean(value.gdprProcessingConsentGiven),
+    gdprRetentionConsentGiven: readOptionalBoolean(value.gdprRetentionConsentGiven)
+  };
+}
+
+function readOptionalBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
 }
 
 function isIngestJobPostingInput(value: unknown): value is IngestJobPostingInput {

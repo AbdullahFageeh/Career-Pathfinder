@@ -58,6 +58,9 @@ export function parseCandidateProfileReference(
     identitySection.keyValues.get("Full legal name"),
     identitySection.keyValues.get("Preferred display name")
   );
+  const preferredName = firstPresent(identitySection.keyValues.get("Preferred display name"));
+  const email = firstPresent(identitySection.keyValues.get("Email"));
+  const phone = firstPresent(identitySection.keyValues.get("Phone"));
   const headline = firstPresent(headlineSection.keyValues.get("Default headline"));
   const targetRoleFamilies = filterKnownValues(
     headlineSection.keyedLists.get("Target role families") ?? []
@@ -80,6 +83,9 @@ export function parseCandidateProfileReference(
   return {
     id: options.profileId ?? createProfileId(fullName),
     fullName,
+    ...(preferredName ? { preferredName } : {}),
+    ...(email ? { email } : {}),
+    ...(phone ? { phone } : {}),
     headline,
     targetRoleFamilies,
     certifications,

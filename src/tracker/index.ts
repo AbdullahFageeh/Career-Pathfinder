@@ -1,6 +1,7 @@
 export {
   addApplicationNote,
   addWorkerDecision,
+  applySubmissionAttemptToRecord,
   attachAtsAssessmentToRecord,
   attachTailoredResumeToRecord,
   completeFollowUp,

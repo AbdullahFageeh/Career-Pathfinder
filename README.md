@@ -42,9 +42,20 @@ npm install
 npm run typecheck
 npm run build
 npm test
+npm run pipeline:single -- --input ./job.json
+npm run queue:single -- --input ./job.json
 npm run worker:once
 ```
 The current runtime foundation reads the candidate profile from local `APPLICATION_REFERENCE.md`, writes durable state under ignored `data/pipeline-store.sqlite`, and saves rendered resume artifacts under ignored `artifacts/`.
+For the first supervised outbound apply slice, set `GREENHOUSE_JOB_BOARD_API_KEY` before running a flow that includes the optional `apply` stage.
+
+## CLI usage
+- Immediate single-job run:
+  - `npm run pipeline:single -- --input ./job.json --reference-path ./APPLICATION_REFERENCE.md --render-output-dir ./artifacts/resumes`
+- Queue a single job with supervised apply enabled:
+  - `npm run queue:single -- --input ./job.json --apply-mode supervised --gdpr-consent --gdpr-processing-consent`
+- Process queued jobs once:
+  - `npm run worker:once`
 
 ## Initial implementation target
 The first implementation milestone is the single-job pipeline:
@@ -53,13 +64,15 @@ The first implementation milestone is the single-job pipeline:
 3. render an ATS-safe resume artifact
 4. score ATS readiness
 5. create an application record
+6. optionally submit a supported Greenhouse application in supervised mode
 
 ## Architecture notes
 - `src/profile/referenceProfile.ts` loads a runtime candidate profile from the local application reference markdown file.
 - `src/ingest/ingestJobPosting.ts` canonicalizes source output into a stable `JobPosting`.
+- `src/apply/index.ts` prepares and submits the first supported supervised Greenhouse Job Board applications, with fallback to manual review when required data is missing or unsupported.
 - `src/storage/sqliteStore.ts` is the default durable runtime store for jobs, resumes, ATS assessments, application records, and queue jobs.
 - `src/storage/fileStore.ts` remains available as a simple JSON-backed fallback store for narrow local flows and tests.
-- `src/queue/pipelineQueue.ts` creates idempotent stage jobs for `ingest -> tailor -> render -> score-ats`.
+- `src/queue/pipelineQueue.ts` creates idempotent stage jobs for `ingest -> tailor -> render -> score-ats`, with an optional trailing `apply` stage when supervised outbound submission is enabled.
 - `src/render/resumeRenderer.ts` renders ATS-safe single-column HTML resume artifacts under ignored local artifact storage.
 - `src/shared/contracts.ts` defines the current shared domain types.
 - `src/policy/targetTitles.ts` stores the first exact Lane 1 target-job-title shortlist for direct-fit searches.
@@ -67,7 +80,7 @@ The first implementation milestone is the single-job pipeline:
 - `src/tailor/resumeTailor.ts` builds the first structured tailored resume draft from a candidate profile and job post.
 - `src/ats/scoreResume.ts` scores ATS readiness for a tailored resume and returns blockers plus suggested fixes.
 - `src/tracker/applicationTracker.ts` creates application records, stores status history, and manages notes plus follow-ups.
-- `src/worker/singleJobPipeline.ts` runs the first persisted `ingest -> tailor -> render -> ATS -> tracker` flow for one job.
-- `src/worker/queueWorker.ts` runs the new one-shot queued worker path and processes pending stage jobs once per invocation.
+- `src/worker/singleJobPipeline.ts` runs the persisted `ingest -> tailor -> render -> ATS -> tracker` flow for one job and can optionally execute the supervised apply step.
+- `src/worker/queueWorker.ts` runs the one-shot queued worker path and processes pending stage jobs once per invocation, including the optional `apply` stage.
 - Each module directory currently exposes a focused stub entry point so implementation can grow without changing the top-level layout.
 - The runtime entry point is `src/index.ts`.

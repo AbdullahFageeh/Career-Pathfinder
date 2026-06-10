@@ -8,6 +8,7 @@ import { buildTailoredResume } from "../tailor/index.js";
 import {
   addApplicationNote,
   addWorkerDecision,
+  applySubmissionAttemptToRecord,
   attachAtsAssessmentToRecord,
   attachTailoredResumeToRecord,
   completeFollowUp,
@@ -111,6 +112,52 @@ test("tracker record advances through tailored and ATS-passed states", () => {
   assert.deepEqual(
     passedRecord.statusHistory.map((entry) => entry.status),
     ["discovered", "tailored", "ats-passed"]
+  );
+});
+
+test("applySubmissionAttemptToRecord only advances to applied after a submitted attempt", () => {
+  const baseRecord = createApplicationRecord({ job: siteManagerJob });
+  const atsReadyRecord = updateApplicationStatus(
+    updateApplicationStatus(baseRecord, "tailored", {
+      at: "2026-06-10T10:00:00.000Z",
+      reason: "Tailored resume attached."
+    }),
+    "ats-passed",
+    {
+      at: "2026-06-10T10:01:00.000Z",
+      reason: "ATS threshold met with score 88."
+    }
+  );
+  const reviewRecord = applySubmissionAttemptToRecord(atsReadyRecord, {
+    id: "application:job-site-manager:submission:1",
+    attemptedAt: "2026-06-10T10:05:00.000Z",
+    mode: "supervised",
+    platform: "greenhouse",
+    outcome: "review-needed",
+    method: "manual-review",
+    targetUrl: "https://boards.greenhouse.io/acme/jobs/1234567",
+    uploadedDocuments: [],
+    failureReason: "Missing required location answer."
+  });
+  const submittedRecord = applySubmissionAttemptToRecord(reviewRecord, {
+    id: "application:job-site-manager:submission:2",
+    attemptedAt: "2026-06-10T10:10:00.000Z",
+    mode: "supervised",
+    platform: "greenhouse",
+    outcome: "submitted",
+    method: "greenhouse-job-board-api",
+    targetUrl: "https://boards.greenhouse.io/acme/jobs/1234567",
+    uploadedDocuments: [],
+    confirmationMessage: "Application received."
+  });
+
+  assert.equal(reviewRecord.status, "ats-passed");
+  assert.equal(reviewRecord.submissionAttempts?.length, 1);
+  assert.equal(submittedRecord.status, "applied");
+  assert.equal(submittedRecord.submissionAttempts?.length, 2);
+  assert.equal(
+    submittedRecord.statusHistory[submittedRecord.statusHistory.length - 1]?.status,
+    "applied"
   );
 });
 
