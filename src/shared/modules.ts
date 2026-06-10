@@ -38,7 +38,7 @@ export const architectureSummary: ModuleSummary[] = [
   },
   {
     key: "render",
-    summary: "HTML and PDF rendering for tailored application materials."
+    summary: "ATS-safe HTML rendering for tailored application materials."
   },
   {
     key: "tracker",

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -65,6 +65,7 @@ test("runSingleJobPipeline persists one job flow idempotently", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-pipeline-"));
   const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
   const storagePath = join(tempDir, "data", "pipeline-store.json");
+  const outputDir = join(tempDir, "artifacts", "resumes");
 
   t.after(async () => {
     await rm(tempDir, { recursive: true, force: true });
@@ -74,24 +75,43 @@ test("runSingleJobPipeline persists one job flow idempotently", async (t) => {
 
   const firstRun = await runSingleJobPipeline(siteManagerJob, {
     referencePath,
-    storagePath
+    storagePath,
+    renderOptions: {
+      outputDir
+    }
   });
   const secondRun = await runSingleJobPipeline(siteManagerJob, {
     referencePath,
-    storagePath
+    storagePath,
+    renderOptions: {
+      outputDir
+    }
   });
   const storage = createFileBackedStorage({ storagePath });
   const snapshot = await storage.readSnapshot();
+  const renderedArtifact = await readFile(secondRun.tailoredResume.outputPath ?? "", "utf8");
 
   assert.equal(firstRun.storagePath, storagePath);
   assert.equal(secondRun.applicationRecord.id, "application:job-site-manager");
   assert.equal(secondRun.applicationRecord.status, "ats-passed");
+  assert.ok(firstRun.tailoredResume.outputPath);
+  assert.ok(secondRun.tailoredResume.outputPath);
   assert.equal(Object.keys(snapshot.jobs).length, 1);
   assert.equal(Object.keys(snapshot.tailoredResumes).length, 1);
   assert.equal(Object.keys(snapshot.atsAssessments).length, 1);
   assert.equal(Object.keys(snapshot.applicationRecords).length, 1);
+  assert.equal(
+    snapshot.tailoredResumes[secondRun.tailoredResume.id]?.outputPath,
+    secondRun.tailoredResume.outputPath
+  );
   assert.deepEqual(
     secondRun.applicationRecord.statusHistory.map((entry) => entry.status),
     ["discovered", "tailored", "ats-passed"]
+  );
+  assert.match(renderedArtifact, /<h1>Abdullah Fageeh<\/h1>/);
+  assert.match(renderedArtifact, /Site Manager \(m\/w\/d\)/);
+  assert.match(
+    renderedArtifact,
+    /Supported venue operations in Formula 1 environments serving 50,000\+ attendees/
   );
 });

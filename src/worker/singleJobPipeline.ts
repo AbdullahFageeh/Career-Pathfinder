@@ -9,6 +9,10 @@ import {
   type CandidateProfileLoadOptions
 } from "../profile/index.js";
 import {
+  renderTailoredResumeArtifact,
+  type RenderTailoredResumeOptions
+} from "../render/index.js";
+import {
   createFileBackedStorage,
   type FileBackedStorageOptions,
   type PipelineStorage
@@ -32,6 +36,7 @@ export type SingleJobPipelineOptions = CandidateProfileLoadOptions &
   IngestJobPostingOptions & {
     initialApplicationNote?: string;
     tailorOptions?: TailorResumeOptions;
+    renderOptions?: RenderTailoredResumeOptions;
     atsScoringOptions?: AtsScoringOptions;
     storage?: PipelineStorage;
   };
@@ -65,10 +70,20 @@ export async function runSingleJobPipeline(
     profileId: options.profileId
   });
   const tailoredResume = buildTailoredResume(profile, job, options.tailorOptions);
+  const renderedArtifact = await renderTailoredResumeArtifact(
+    profile,
+    job,
+    tailoredResume,
+    options.renderOptions
+  );
+  const renderedResume = {
+    ...tailoredResume,
+    outputPath: renderedArtifact.outputPath
+  };
 
-  await storage.upsertTailoredResume(tailoredResume);
+  await storage.upsertTailoredResume(renderedResume);
 
-  const atsAssessment = scoreAtsReadiness(job, tailoredResume, options.atsScoringOptions);
+  const atsAssessment = scoreAtsReadiness(job, renderedResume, options.atsScoringOptions);
 
   await storage.upsertAtsAssessment(atsAssessment);
 
@@ -79,8 +94,8 @@ export async function runSingleJobPipeline(
         job,
         note: options.initialApplicationNote
       });
-  const withResume = attachTailoredResumeToRecord(baseRecord, tailoredResume, {
-    at: tailoredResume.generatedAt
+  const withResume = attachTailoredResumeToRecord(baseRecord, renderedResume, {
+    at: renderedResume.generatedAt
   });
   const applicationRecord = attachAtsAssessmentToRecord(withResume, atsAssessment, {
     at: atsAssessment.assessedAt
@@ -91,7 +106,7 @@ export async function runSingleJobPipeline(
   return {
     job,
     profile,
-    tailoredResume,
+    tailoredResume: renderedResume,
     atsAssessment,
     applicationRecord,
     storagePath: storage.storagePath
