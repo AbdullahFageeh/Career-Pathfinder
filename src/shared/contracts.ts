@@ -41,6 +41,9 @@ export type RecurringAnswer = {
 export type CandidateProfile = {
   id: string;
   fullName: string;
+  preferredName?: string;
+  email?: string;
+  phone?: string;
   headline: string;
   targetRoleFamilies: string[];
   certifications: string[];
@@ -57,6 +60,16 @@ export type JobSource = {
   url?: string;
 };
 
+export type ApplicationPlatform = "greenhouse";
+
+export type ApplicationTarget = {
+  url?: string;
+  platform?: ApplicationPlatform;
+  boardToken?: string;
+  jobId?: string;
+  submissionUrl?: string;
+};
+
 export type JobPosting = {
   id: string;
   source: JobSource;
@@ -65,6 +78,7 @@ export type JobPosting = {
   location?: string;
   description: string;
   detectedRoleFamily?: string;
+  applicationTarget?: ApplicationTarget;
   tags: string[];
   discoveredAt: string;
 };
@@ -150,6 +164,8 @@ export type ContactRecord = {
   confidence: ConfidenceLevel;
 };
 
+export type AutomationMode = "observe" | "supervised" | "full-auto";
+
 export type ApplicationStatus =
   | "discovered"
   | "screened"
@@ -188,6 +204,36 @@ export type ApplicationFollowUp = {
   note?: string;
 };
 
+export type ApplicationDocumentKind = "resume";
+
+export type ApplicationDocumentSource = "tailored-resume" | "candidate-profile";
+
+export type ApplicationDocumentReference = {
+  kind: ApplicationDocumentKind;
+  label: string;
+  path: string;
+  source: ApplicationDocumentSource;
+};
+
+export type ApplicationSubmissionOutcome = "submitted" | "review-needed" | "failed";
+
+export type ApplicationSubmissionMethod = "greenhouse-job-board-api" | "manual-review";
+
+export type ApplicationSubmissionAttempt = {
+  id: string;
+  attemptedAt: string;
+  mode: AutomationMode;
+  platform: ApplicationPlatform | "unsupported";
+  outcome: ApplicationSubmissionOutcome;
+  method: ApplicationSubmissionMethod;
+  targetUrl: string;
+  submissionUrl?: string;
+  uploadedDocuments: ApplicationDocumentReference[];
+  responseStatus?: number;
+  confirmationMessage?: string;
+  failureReason?: string;
+};
+
 export type ApplicationRecord = {
   id: string;
   jobId: string;
@@ -196,6 +242,8 @@ export type ApplicationRecord = {
   sourceName: string;
   location?: string;
   sourceUrl?: string;
+  applicationUrl?: string;
+  applicationPlatform?: ApplicationPlatform;
   status: ApplicationStatus;
   atsScore?: number;
   resumeId?: string;
@@ -203,11 +251,10 @@ export type ApplicationRecord = {
   workerDecisions: WorkerDecisionEntry[];
   statusHistory: ApplicationStatusHistoryEntry[];
   followUps: ApplicationFollowUp[];
+  submissionAttempts?: ApplicationSubmissionAttempt[];
   createdAt: string;
   updatedAt: string;
 };
-
-export type AutomationMode = "observe" | "supervised" | "full-auto";
 
 export type PolicyConfig = {
   mode: AutomationMode;

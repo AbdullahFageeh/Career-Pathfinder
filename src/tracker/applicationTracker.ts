@@ -1,6 +1,7 @@
 import type {
   ApplicationFollowUp,
   ApplicationRecord,
+  ApplicationSubmissionAttempt,
   ApplicationStatus,
   AtsAssessment,
   JobPosting,
@@ -32,6 +33,18 @@ function assertArtifactMatchesApplicationJob(
   throw new Error(
     `Cannot attach ${artifactLabel} for job "${artifactJobId}" to application "${record.id}" for job "${record.jobId}".`
   );
+}
+
+function readSubmissionAttempts(record: ApplicationRecord): ApplicationSubmissionAttempt[] {
+  return record.submissionAttempts ?? [];
+}
+
+function createSubmittedReason(attempt: ApplicationSubmissionAttempt): string {
+  if (attempt.platform === "greenhouse") {
+    return "Application submitted via Greenhouse Job Board API.";
+  }
+
+  return "Application submitted.";
 }
 
 export type TrackerMutationOptions = {
@@ -66,6 +79,8 @@ export function createApplicationRecord(
     sourceName: input.job.source.name,
     location: input.job.location,
     sourceUrl: input.job.source.url,
+    applicationUrl: input.job.applicationTarget?.url,
+    applicationPlatform: input.job.applicationTarget?.platform,
     status: initialStatus,
     notes: input.note
       ? [
@@ -84,6 +99,7 @@ export function createApplicationRecord(
       }
     ],
     followUps: [],
+    submissionAttempts: [],
     createdAt,
     updatedAt: createdAt
   };
@@ -174,6 +190,30 @@ export function attachAtsAssessmentToRecord(
   return updateApplicationStatus(withAssessment, "ats-passed", {
     at: updatedAt,
     reason: `ATS threshold met with score ${assessment.score}.`
+  });
+}
+
+export function applySubmissionAttemptToRecord(
+  record: ApplicationRecord,
+  attempt: ApplicationSubmissionAttempt
+): ApplicationRecord {
+  const withAttempt = {
+    ...record,
+    submissionAttempts: [...readSubmissionAttempts(record), attempt],
+    updatedAt: attempt.attemptedAt
+  };
+
+  if (attempt.outcome !== "submitted") {
+    return withAttempt;
+  }
+
+  if ((STATUS_RANK.get(record.status) ?? 0) >= (STATUS_RANK.get("applied") ?? 0)) {
+    return withAttempt;
+  }
+
+  return updateApplicationStatus(withAttempt, "applied", {
+    at: attempt.attemptedAt,
+    reason: attempt.confirmationMessage ?? createSubmittedReason(attempt)
   });
 }
 

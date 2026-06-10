@@ -9,6 +9,8 @@
     "test": "npm run build && node --test dist/**/*.test.js",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
+    "pipeline:single": "npm run build && node dist/index.js pipeline:single",
+    "queue:single": "npm run build && node dist/index.js queue:single",
     "worker:once": "npm run build && node dist/index.js worker:once"
   },
   "devDependencies": {

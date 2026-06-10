@@ -6,6 +6,7 @@ export {
   type PipelineQueueRunResult
 } from "./queueWorker.js";
 export {
+  applyToStoredJob,
   runSingleJobPipeline,
   persistIngestedJobPosting,
   renderStoredTailoredResume,

@@ -1,3 +1,7 @@
+import {
+  submitJobApplication,
+  type ApplySubmissionOptions
+} from "../apply/index.js";
 import { scoreAtsReadiness, type AtsScoringOptions } from "../ats/index.js";
 import {
   ingestJobPosting,
@@ -25,6 +29,7 @@ import {
 } from "../tracker/index.js";
 import type {
   ApplicationRecord,
+  ApplicationSubmissionAttempt,
   AtsAssessment,
   CandidateProfile,
   JobPosting,
@@ -38,6 +43,7 @@ export type SingleJobPipelineOptions = CandidateProfileLoadOptions &
     tailorOptions?: TailorResumeOptions;
     renderOptions?: RenderTailoredResumeOptions;
     atsScoringOptions?: AtsScoringOptions;
+    applyOptions?: ApplySubmissionOptions;
     storage?: PipelineStorage;
   };
 
@@ -47,6 +53,7 @@ export type SingleJobPipelineResult = {
   tailoredResume: TailoredResume;
   atsAssessment: AtsAssessment;
   applicationRecord: ApplicationRecord;
+  applicationAttempt?: ApplicationSubmissionAttempt;
   storagePath: string;
 };
 
@@ -56,6 +63,7 @@ export type SingleJobPipelineStageOptions = CandidateProfileLoadOptions &
     tailorOptions?: TailorResumeOptions;
     renderOptions?: RenderTailoredResumeOptions;
     atsScoringOptions?: AtsScoringOptions;
+    applyOptions?: ApplySubmissionOptions;
     storage: PipelineStorage;
   };
 
@@ -88,13 +96,24 @@ export async function runSingleJobPipeline(
     initialApplicationNote: options.initialApplicationNote,
     atsScoringOptions: options.atsScoringOptions
   });
+  const appliedResult = options.applyOptions
+    ? await applyToStoredJob(job, renderedResume, {
+        storage,
+        profile,
+        referencePath: options.referencePath,
+        profileId: options.profileId,
+        initialApplicationNote: options.initialApplicationNote,
+        applyOptions: options.applyOptions
+      })
+    : undefined;
 
   return {
     job,
-    profile,
+    profile: appliedResult?.profile ?? profile,
     tailoredResume: renderedResume,
     atsAssessment,
-    applicationRecord,
+    applicationRecord: appliedResult?.applicationRecord ?? applicationRecord,
+    applicationAttempt: appliedResult?.applicationAttempt,
     storagePath: storage.storagePath
   };
 }
@@ -224,6 +243,43 @@ export async function scoreStoredTailoredResume(
   };
 }
 
+export async function applyToStoredJob(
+  job: JobPosting,
+  tailoredResume: TailoredResume,
+  options: SingleJobPipelineStageOptions & {
+    profile?: CandidateProfile;
+  }
+): Promise<{
+  profile: CandidateProfile;
+  applicationRecord: ApplicationRecord;
+  applicationAttempt: ApplicationSubmissionAttempt;
+}> {
+  const profile =
+    options.profile ??
+    (await loadCandidateProfile({
+      referencePath: options.referencePath,
+      profileId: options.profileId
+    }));
+  const currentApplicationRecord = await ensureApplicationRecord(options.storage, job, {
+    initialApplicationNote: options.initialApplicationNote
+  });
+  const { applicationRecord, attempt } = await submitJobApplication(
+    job,
+    currentApplicationRecord,
+    profile,
+    tailoredResume,
+    options.applyOptions
+  );
+
+  await options.storage.upsertApplicationRecord(applicationRecord);
+
+  return {
+    profile,
+    applicationRecord,
+    applicationAttempt: attempt
+  };
+}
+
 function resolvePipelineStorage(options: SingleJobPipelineOptions): PipelineStorage {
   return (
     options.storage ??
@@ -261,6 +317,8 @@ function syncApplicationRecordWithJob(
     company: job.company,
     sourceName: job.source.name,
     location: job.location,
-    sourceUrl: job.source.url
+    sourceUrl: job.source.url,
+    applicationUrl: job.applicationTarget?.url ?? record.applicationUrl,
+    applicationPlatform: job.applicationTarget?.platform ?? record.applicationPlatform
   };
 }
