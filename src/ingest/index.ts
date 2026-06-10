@@ -1,3 +1,9 @@
+export {
+  ingestJobPosting,
+  type IngestJobPostingInput,
+  type IngestJobPostingOptions,
+  type RawJobPostingInput
+} from "./ingestJobPosting.js";
 export const ingestModule = {
   key: "ingest",
   summary: "Transform raw listing data into structured job posting records.",
