@@ -206,6 +206,90 @@ test("prepareJobApplicationSubmission builds a ready Greenhouse request when req
   assert.equal(readFieldValue(result.prepared.fields, "data_compliance[gdpr_consent_given]"), "true");
 });
 
+test("prepareJobApplicationSubmission allows a retry after a review-needed attempt", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-retry-"));
+  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const profile = createCandidateProfile(resumePath);
+  const recordWithReviewNeededAttempt = {
+    ...createAtsReadyRecord(greenhouseJob),
+    submissionAttempts: [
+      {
+        id: "application:job-greenhouse-site-manager:submission:1",
+        attemptedAt: "2026-06-10T08:08:00.000Z",
+        mode: "supervised" as const,
+        platform: "greenhouse" as const,
+        outcome: "review-needed" as const,
+        method: "manual-review" as const,
+        targetUrl: greenhouseJob.applicationTarget?.url ?? greenhouseJob.source.url ?? "unknown",
+        submissionUrl: "https://boards-api.greenhouse.io/v1/boards/acme/jobs/1234567",
+        uploadedDocuments: [],
+        failureReason: "Missing consent."
+      }
+    ]
+  };
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  await writeFile(resumePath, "resume-pdf-placeholder", "utf8");
+
+  const fetchImpl: typeof fetch = async () =>
+    jsonResponse({
+      questions: [
+        {
+          label: "First Name",
+          required: true,
+          fields: [{ name: "first_name", type: "input_text" }]
+        },
+        {
+          label: "Last Name",
+          required: true,
+          fields: [{ name: "last_name", type: "input_text" }]
+        },
+        {
+          label: "Email",
+          required: true,
+          fields: [{ name: "email", type: "input_text" }]
+        },
+        {
+          label: "Resume/CV",
+          required: true,
+          fields: [{ name: "resume", type: "input_file" }]
+        },
+        {
+          label: "Work authorization",
+          required: true,
+          fields: [
+            {
+              name: "work_authorization",
+              type: "multi_value_single_select",
+              values: [
+                { label: "Yes", value: "yes" },
+                { label: "No", value: "no" }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+  const result = await prepareJobApplicationSubmission(
+    greenhouseJob,
+    recordWithReviewNeededAttempt,
+    profile,
+    tailoredResume,
+    {
+      mode: "supervised",
+      greenhouseJobBoardApiKey: "test-key",
+      fetchImpl,
+      now: "2026-06-10T08:10:00.000Z"
+    }
+  );
+
+  assert.equal(result.ready, true);
+});
+
 test("submitJobApplication records a submitted Greenhouse attempt and advances the tracker record", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-submit-"));
   const resumePath = join(tempDir, "abdullah-resume.pdf");

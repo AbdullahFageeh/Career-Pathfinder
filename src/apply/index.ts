@@ -146,13 +146,14 @@ export async function prepareJobApplicationSubmission(
       "The first outbound adapter only submits in supervised mode."
     );
   }
-  if ((applicationRecord.submissionAttempts?.length ?? 0) > 0 || applicationRecord.status === "applied") {
+
+  if (hasSubmittedApplication(applicationRecord) || applicationRecord.status === "applied") {
     return createReviewPreparation(
       applicationRecord,
       mode,
       attemptedAt,
       job.applicationTarget?.url ?? job.source.url ?? "unknown",
-      "This job already has a recorded submission attempt."
+      "This job is already recorded as submitted."
     );
   }
 
@@ -474,6 +475,12 @@ function createSubmissionAttempt(
     id: `${applicationRecord.id}:submission:${(applicationRecord.submissionAttempts?.length ?? 0) + 1}`,
     ...input
   };
+}
+
+function hasSubmittedApplication(applicationRecord: ApplicationRecord): boolean {
+  return (applicationRecord.submissionAttempts ?? []).some(
+    (submissionAttempt) => submissionAttempt.outcome === "submitted"
+  );
 }
 
 async function fetchGreenhouseQuestions(

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import test from "node:test";
 
 import type {
@@ -141,6 +142,10 @@ const sampleApplicationRecord: ApplicationRecord = {
   updatedAt: "2026-06-10T08:10:00.000Z"
 };
 
+const resolvedStoragePath = resolve("data/pipeline-store.sqlite");
+const resolvedReferencePath = resolve("APPLICATION_REFERENCE.md");
+const resolvedRenderOutputDir = resolve("artifacts/resumes");
+
 test("runCli pipeline:single forwards apply options and prints an apply summary", async () => {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -201,11 +206,11 @@ test("runCli pipeline:single forwards apply options and prints an apply summary"
   assert.equal(exitCode, 0);
   assert.deepEqual(capturedInput, sampleJob);
   assert.deepEqual(capturedOptions, {
-    storagePath: "/Users/abdullah/Downloads/Job project/data/pipeline-store.sqlite",
-    referencePath: "/Users/abdullah/Downloads/Job project/APPLICATION_REFERENCE.md",
+    storagePath: resolvedStoragePath,
+    referencePath: resolvedReferencePath,
     profileId: "abdullah",
     renderOptions: {
-      outputDir: "/Users/abdullah/Downloads/Job project/artifacts/resumes"
+      outputDir: resolvedRenderOutputDir
     },
     applyOptions: {
       mode: "supervised",
@@ -276,10 +281,10 @@ test("runCli queue:single forwards supervised apply settings into the durable qu
   assert.equal(exitCode, 0);
   assert.deepEqual(capturedInput, sampleJob);
   assert.deepEqual(capturedOptions, {
-    storagePath: "/Users/abdullah/Downloads/Job project/data/pipeline-store.sqlite",
-    referencePath: "/Users/abdullah/Downloads/Job project/APPLICATION_REFERENCE.md",
+    storagePath: resolvedStoragePath,
+    referencePath: resolvedReferencePath,
     profileId: undefined,
-    renderOutputDir: "/Users/abdullah/Downloads/Job project/artifacts/resumes",
+    renderOutputDir: resolvedRenderOutputDir,
     applyMode: "supervised",
     dataConsent: {
       gdprConsentGiven: true,
@@ -333,7 +338,7 @@ test("runCli worker:once forwards numeric worker options and prints the worker s
 
   assert.equal(exitCode, 0);
   assert.deepEqual(capturedOptions, {
-    storagePath: "/Users/abdullah/Downloads/Job project/data/pipeline-store.sqlite",
+    storagePath: resolvedStoragePath,
     workerId: "worker:test",
     maxJobs: 5,
     leaseDurationMs: 1000,
