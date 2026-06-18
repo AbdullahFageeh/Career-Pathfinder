@@ -61,6 +61,10 @@ export function parseCandidateProfileReference(
   const preferredName = firstPresent(identitySection.keyValues.get("Preferred display name"));
   const email = firstPresent(identitySection.keyValues.get("Email"));
   const phone = firstPresent(identitySection.keyValues.get("Phone"));
+  const country = firstPresent(
+    identitySection.keyValues.get("Current country"),
+    identitySection.keyValues.get("Country of residence")
+  );
   const headline = firstPresent(headlineSection.keyValues.get("Default headline"));
   const targetRoleFamilies = filterKnownValues(
     headlineSection.keyedLists.get("Target role families") ?? []
@@ -86,6 +90,7 @@ export function parseCandidateProfileReference(
     ...(preferredName ? { preferredName } : {}),
     ...(email ? { email } : {}),
     ...(phone ? { phone } : {}),
+    ...(country ? { country } : {}),
     headline,
     targetRoleFamilies,
     certifications,

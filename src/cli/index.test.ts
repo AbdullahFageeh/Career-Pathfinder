@@ -145,6 +145,22 @@ const sampleApplicationRecord: ApplicationRecord = {
 const resolvedStoragePath = resolve("data/pipeline-store.sqlite");
 const resolvedReferencePath = resolve("APPLICATION_REFERENCE.md");
 const resolvedRenderOutputDir = resolve("artifacts/resumes");
+const resolvedResumePath = resolve("artifacts/resumes/abdullah-resume.pdf");
+const resolvedBrowserExecutablePath = resolve(
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+);
+
+const sampleProfile = {
+  id: "abdullah-seed",
+  fullName: "Abdullah Fageeh",
+  country: "Saudi Arabia",
+  headline: "Installation Manager | Site Operations",
+  targetRoleFamilies: ["Site Operations"],
+  certifications: [],
+  coreProofPoints: [],
+  documents: [],
+  recurringAnswers: []
+};
 
 test("runCli pipeline:single forwards apply options and prints an apply summary", async () => {
   const stdout: string[] = [];
@@ -153,16 +169,7 @@ test("runCli pipeline:single forwards apply options and prints an apply summary"
   let capturedOptions: unknown;
   const result: SingleJobPipelineResult = {
     job: sampleJob,
-    profile: {
-      id: "abdullah-seed",
-      fullName: "Abdullah Fageeh",
-      headline: "Installation Manager | Site Operations",
-      targetRoleFamilies: ["Site Operations"],
-      certifications: [],
-      coreProofPoints: [],
-      documents: [],
-      recurringAnswers: []
-    },
+    profile: sampleProfile,
     tailoredResume: sampleResume,
     atsAssessment: sampleAssessment,
     applicationRecord: sampleApplicationRecord,
@@ -226,6 +233,72 @@ test("runCli pipeline:single forwards apply options and prints an apply summary"
   assert.match(stdout[0] ?? "", /Single job pipeline complete\./);
   assert.match(stdout[0] ?? "", /- apply outcome: submitted/);
   assert.match(stdout[0] ?? "", /- apply confirmation: Application received\./);
+});
+
+test("runCli greenhouse:hosted:prefill loads the profile, forwards browser options, and prints missing fields", async () => {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  let capturedProfileOptions: unknown;
+  let capturedTargetUrl: unknown;
+  let capturedPrefillOptions: unknown;
+
+  const exitCode = await runCli(
+    [
+      "greenhouse:hosted:prefill",
+      "--url",
+      "https://job-boards.eu.greenhouse.io/moia/jobs/4881160101",
+      "--reference-path",
+      "APPLICATION_REFERENCE.md",
+      "--resume-path",
+      "artifacts/resumes/abdullah-resume.pdf",
+      "--browser-executable-path",
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "--headless",
+      "--timeout-ms",
+      "45000"
+    ],
+    {
+      loadCandidateProfile: async (options) => {
+        capturedProfileOptions = options;
+        return sampleProfile;
+      },
+      prefillHostedGreenhouseApplication: async (targetUrl, _profile, options) => {
+        capturedTargetUrl = targetUrl;
+        capturedPrefillOptions = options;
+        return {
+          targetUrl,
+          browserExecutablePath: resolvedBrowserExecutablePath,
+          resumePath: resolvedResumePath,
+          filledFields: ["Country", "Email", "First Name"],
+          missingRequiredFields: ["What are your salary expectations (gross annual salary in EUR)?"],
+          readyForManualReview: false,
+          keptBrowserOpen: false
+        };
+      }
+    },
+    {
+      stdout: (message) => stdout.push(message),
+      stderr: (message) => stderr.push(message)
+    }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(capturedProfileOptions, {
+    referencePath: resolvedReferencePath,
+    profileId: undefined
+  });
+  assert.equal(capturedTargetUrl, "https://job-boards.eu.greenhouse.io/moia/jobs/4881160101");
+  assert.deepEqual(capturedPrefillOptions, {
+    browserExecutablePath: resolvedBrowserExecutablePath,
+    headless: true,
+    keepOpen: false,
+    resumePath: resolvedResumePath,
+    timeoutMs: 45000
+  });
+  assert.equal(stderr.length, 0);
+  assert.match(stdout[0] ?? "", /Hosted Greenhouse prefill complete\./);
+  assert.match(stdout[0] ?? "", /- missing required fields: 1/);
+  assert.match(stdout[0] ?? "", /salary expectations/);
 });
 
 test("runCli queue:single forwards supervised apply settings into the durable queue", async () => {

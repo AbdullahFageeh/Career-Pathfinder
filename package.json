@@ -9,6 +9,7 @@
     "test": "npm run build && node --test dist/**/*.test.js",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
+    "greenhouse:hosted:prefill": "npm run build && node dist/index.js greenhouse:hosted:prefill",
     "pipeline:single": "npm run build && node dist/index.js pipeline:single",
     "queue:single": "npm run build && node dist/index.js queue:single",
     "worker:once": "npm run build && node dist/index.js worker:once"
@@ -16,5 +17,8 @@
   "devDependencies": {
     "@types/node": "^22.15.30",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "playwright-core": "^1.60.0"
   }
 }

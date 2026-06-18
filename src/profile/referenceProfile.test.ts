@@ -10,6 +10,7 @@ const referenceFixture = `# Job Application Reference
 ## Identity and contact
 - Full legal name: Test Candidate
 - Preferred display name: Test Candidate
+- Current country: Saudi Arabia
 
 ## Professional headline
 - Default headline: Site Operations | Production Manager
@@ -48,6 +49,7 @@ test("loadCandidateProfile parses local reference markdown and filters TODO valu
   const profile = await loadCandidateProfile({ referencePath });
 
   assert.equal(profile.fullName, "Test Candidate");
+  assert.equal(profile.country, "Saudi Arabia");
   assert.equal(profile.headline, "Site Operations | Production Manager");
   assert.deepEqual(profile.targetRoleFamilies, ["Site Manager", "Production Manager"]);
   assert.deepEqual(profile.certifications, [

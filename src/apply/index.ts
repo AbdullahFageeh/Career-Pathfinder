@@ -13,6 +13,17 @@ import type {
   TailoredResume
 } from "../shared/contracts.js";
 import { applySubmissionAttemptToRecord } from "../tracker/index.js";
+export {
+  createHostedGreenhouseAnswerMap,
+  prefillHostedGreenhouseApplication,
+  resolveHostedGreenhouseBrowserExecutablePath,
+  resolveHostedGreenhouseFieldValue,
+  resolveHostedGreenhouseResumePath,
+  shouldCheckHostedGreenhouseOption,
+  type HostedGreenhouseFieldValue,
+  type HostedGreenhousePrefillOptions,
+  type HostedGreenhousePrefillResult
+} from "./greenhouseHosted.js";
 
 const GREENHOUSE_API_BASE_URL = "https://boards-api.greenhouse.io/v1";
 const GREENHOUSE_JOB_BOARD_API_KEY_ENV = "GREENHOUSE_JOB_BOARD_API_KEY";
@@ -1133,7 +1144,7 @@ export const applyModule = {
   summary: "Prepare and submit supported outbound applications with auditable fallbacks.",
   responsibilities: [
     "Validate outbound submission prerequisites before a live apply attempt.",
-    "Submit supported Greenhouse applications with tracked evidence and outcomes.",
+    "Submit supported Greenhouse applications or prefill hosted forms for supervised review.",
     "Fallback to review when a job, answer set, or credential is unsupported."
   ]
 } as const;
