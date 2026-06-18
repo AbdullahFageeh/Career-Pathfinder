@@ -44,6 +44,7 @@ export type CandidateProfile = {
   preferredName?: string;
   email?: string;
   phone?: string;
+  country?: string;
   headline: string;
   targetRoleFamilies: string[];
   certifications: string[];

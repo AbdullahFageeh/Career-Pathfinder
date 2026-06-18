@@ -50,7 +50,7 @@ export const architectureSummary: ModuleSummary[] = [
   },
   {
     key: "apply",
-    summary: "Supported application adapters for platform-specific automation."
+    summary: "Supported application adapters and supervised browser-fill helpers for platform-specific automation."
   },
   {
     key: "storage",
