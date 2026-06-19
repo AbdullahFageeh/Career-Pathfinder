@@ -1,0 +1,28 @@
+{
+  "id": "amazon-2870670-operations-supervisor-jeddah",
+  "source": {
+    "kind": "company-page",
+    "name": "Amazon Jobs",
+    "url": "https://www.amazon.jobs/en/jobs/2870670/operations-supervisor"
+  },
+  "title": "Operations Supervisor",
+  "company": "Amazon",
+  "location": "Jeddah, Saudi Arabia",
+  "description": "Official Amazon operations role in Jeddah, listed under Afaq - Warehouse Branch. The role oversees shift management across fulfillment, sortation, or delivery-station operations, drives safety, trains associates, keeps orders on quality and safety targets, shares shift-level operational updates, adjusts labor allocation to match plans, coordinates with support teams on readiness and training, and helps solve logistics and supply-chain challenges through data analysis and process improvement.",
+  "detectedRoleFamily": "Site Operations",
+  "applicationTarget": {
+    "url": "https://www.amazon.jobs/en/jobs/2870670/operations-supervisor"
+  },
+  "tags": [
+    "amazon",
+    "official-source",
+    "saudi-arabia",
+    "jeddah",
+    "operations-supervisor",
+    "fulfillment-center",
+    "warehouse-operations",
+    "shift-management",
+    "family:Site Operations",
+    "save-only"
+  ]
+}
