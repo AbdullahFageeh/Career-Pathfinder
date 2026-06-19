@@ -478,20 +478,56 @@ async function fillHostedCountryField(
   await countryInput.click();
   await countryInput.fill(answer);
   await page.waitForTimeout(800);
+  const matchingOptionIndex = await page.locator("[role=\"option\"]").evaluateAll(
+    (elements, targetAnswer) => {
+      const normalize = (value: string): string =>
+        value
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim();
+      const isVisible = (element: Element): boolean => {
+        const styles = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return (
+          styles.display !== "none" &&
+          styles.visibility !== "hidden" &&
+          rect.width > 0 &&
+          rect.height > 0
+        );
+      };
+      const normalizedTargetAnswer = normalize(targetAnswer);
 
-  const matchingOption = page.locator("[role=\"option\"]", {
-    hasText: answer
-  }).first();
+      return elements.findIndex((element) => {
+        if (!isVisible(element)) {
+          return false;
+        }
 
-  if ((await matchingOption.count()) === 0) {
+        return normalize(element.textContent ?? "").includes(normalizedTargetAnswer);
+      });
+    },
+    answer
+  );
+
+  if (matchingOptionIndex >= 0) {
+    await page.locator("[role=\"option\"]").nth(matchingOptionIndex).click();
+    filledFields.add(descriptor.cleanLabel);
+    missingRequiredFields.delete(descriptor.cleanLabel);
+    return;
+  }
+
+  await countryInput.press("ArrowDown").catch(() => {});
+  await countryInput.press("Enter").catch(() => {});
+  await page.waitForTimeout(300);
+
+  const resolvedValue = (await countryInput.inputValue()).trim();
+
+  if (resolvedValue.length === 0) {
     if (descriptor.required) {
       missingRequiredFields.add(descriptor.cleanLabel);
     }
 
     return;
   }
-
-  await matchingOption.click();
   filledFields.add(descriptor.cleanLabel);
   missingRequiredFields.delete(descriptor.cleanLabel);
 }
