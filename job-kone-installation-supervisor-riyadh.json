@@ -1,0 +1,17 @@
+{
+  "id": "kone-installation-supervisor-riyadh",
+  "source": {
+    "kind": "job-board",
+    "name": "LinkedIn Jobs",
+    "url": "https://sa.linkedin.com/jobs/view/installation-supervisor-at-kone-4426333412"
+  },
+  "title": "Installation Supervisor",
+  "company": "KONE",
+  "location": "Riyadh, Saudi Arabia",
+  "description": "Manage elevator/escalator installation projects from sales hand-over to client handover. Lead installation crews to deliver on schedule, on budget and to safety/quality standards; act as KONE interface to customer and stakeholders throughout site execution. Fits site supervision, schedule acceleration and HSE proof points.",
+  "detectedRoleFamily": "Site Operations",
+  "applicationTarget": {
+    "url": "https://sa.linkedin.com/jobs/view/installation-supervisor-at-kone-4426333412"
+  },
+  "tags": ["saudi-arabia", "riyadh", "site-operations", "official-source", "family:Site Operations"]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "talent-blueprint-overlay-venue-manager-riyadh",
+  "source": {
+    "kind": "job-board",
+    "name": "LinkedIn Jobs",
+    "url": "https://sa.linkedin.com/jobs/view/overlay-venue-manager-at-talent-blueprint-fz-llc-4426782952"
+  },
+  "title": "Overlay Venue Manager",
+  "company": "Talent Blueprint",
+  "location": "Riyadh, Saudi Arabia",
+  "description": "Fixed-term role (Jul 2026 - Feb 2027) leading planning, installation, operation and removal of temporary infrastructure that transforms venues into operational event sites. Works with venue ops, contractors, project teams and authorities to deliver overlay safely, on schedule and on budget. Excellent fit for Formula 1 / SRMGX large-event installation track record.",
+  "detectedRoleFamily": "Installation",
+  "applicationTarget": {
+    "url": "https://sa.linkedin.com/jobs/view/overlay-venue-manager-at-talent-blueprint-fz-llc-4426782952"
+  },
+  "tags": ["saudi-arabia", "riyadh", "installation", "official-source", "family:Installation", "contract"]
+}
