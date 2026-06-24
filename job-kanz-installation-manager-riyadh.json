@@ -1,0 +1,17 @@
+{
+  "id": "kanz-installation-manager-riyadh",
+  "source": {
+    "kind": "job-board",
+    "name": "LinkedIn Jobs",
+    "url": "https://sa.linkedin.com/jobs/view/installation-manager-at-kanz-4422180669"
+  },
+  "title": "Installation Manager",
+  "company": "Kanz",
+  "location": "Riyadh, Saudi Arabia",
+  "description": "Lead onsite installation of custom-built scenic elements, displays, exhibits and event structures for events, exhibitions and brand activations. Manages installation crews, logistics coordination, safety compliance, and assembly/dismantle from fabrication workshop through site delivery. Direct fit for multi-venue installation, AutoCAD layout compliance and vendor coordination experience.",
+  "detectedRoleFamily": "Installation",
+  "applicationTarget": {
+    "url": "https://sa.linkedin.com/jobs/view/installation-manager-at-kanz-4422180669"
+  },
+  "tags": ["saudi-arabia", "riyadh", "installation", "official-source", "family:Installation"]
+}

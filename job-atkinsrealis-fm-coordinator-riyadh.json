@@ -1,0 +1,17 @@
+{
+  "id": "atkinsrealis-fm-coordinator-riyadh",
+  "source": {
+    "kind": "job-board",
+    "name": "LinkedIn Jobs",
+    "url": "https://sa.linkedin.com/jobs/view/fm-coordinator-at-atkinsr%C3%A9alis-4417096088"
+  },
+  "title": "FM Coordinator",
+  "company": "AtkinsRéalis",
+  "location": "Riyadh, Saudi Arabia",
+  "description": "Coordinate daily FM operations across a client portfolio: subcontractor coordination, service-request resolution, safety/compliance, VIP visit support. Strong fit for facilities/workplace ops coordination with HSE and vendor coordination background.",
+  "detectedRoleFamily": "Facilities",
+  "applicationTarget": {
+    "url": "https://sa.linkedin.com/jobs/view/fm-coordinator-at-atkinsr%C3%A9alis-4417096088"
+  },
+  "tags": ["saudi-arabia", "riyadh", "facilities", "official-source", "family:Facilities"]
+}
