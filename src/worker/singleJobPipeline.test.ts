@@ -41,7 +41,7 @@ const profileReferenceFixture = `# Job Application Reference
 - Fundamentals of Artificial Intelligence, SDAIA (2025)
 
 ## Documents and file references
-- Master CV PDF: /Users/abdullah/Downloads/Abdullah_Fageeh_CV_26.pdf
+- Master CV PDF: /Users/abdullah/Desktop/Abdullah_Fageeh_CV_2026.pdf
 `;
 
 function createApplyReadyProfileReferenceFixture(resumePath: string): string {
