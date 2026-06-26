@@ -1,6 +1,13 @@
 # Personal local reference files
 APPLICATION_REFERENCE.md
 SESSION_LOG.md
+/desktop.md
+
+# Local system clutter
+.DS_Store
+
+# Personal local CV exports
+/Abdullah_Fageeh_CV*
 
 # Secrets and environment
 .env
@@ -30,3 +37,14 @@ user-data/
 *.db
 *.sqlite
 *.sqlite3
+
+# Local outreach exports and working folders
+/outreach-*.txt
+/saudi-all-gathered-outreach-emails-*.csv
+/saudi-contact-pool-*.csv
+/saudi-invalid-outreach-emails-*.csv
+/saudi-new-outreach-emails-*.csv
+/saudi-outreach-emails-*.csv
+/saudi-tailored-outreach-2026-06-18/
+/saudi-tailored-outreach-2026-06-18-cleaned/
+/saudi-tailored-outreach-2026-06-18-cleaned.zip
