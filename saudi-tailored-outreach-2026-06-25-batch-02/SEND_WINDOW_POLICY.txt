@@ -1,0 +1,6 @@
+Allowed email send window
+- Days: Sunday through Thursday
+- Time: 10:00 to 11:00 local time
+- Rule: do not send outside this window
+- Guard script: mail_send_window_guard.py
+- Launcher: open_drafts_allowed_window.command
