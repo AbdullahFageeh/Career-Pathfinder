@@ -38,10 +38,12 @@ user-data/
 *.sqlite
 *.sqlite3
 
-# Local outreach exports and working folders
+# Personal local working folders
 /Abdullah/
 /Hamda/
 /Yahia/
+
+# Local outreach exports and working folders
 /outreach-*.txt
 /saudi-all-gathered-outreach-emails-*.csv
 /saudi-contact-pool-*.csv
