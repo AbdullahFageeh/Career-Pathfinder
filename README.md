@@ -12,7 +12,7 @@ This repository starts with the agreed architecture and core contracts for:
 ## Local-only files
 The following files are intentionally kept out of Git because they contain personal references or live session notes:
 - `APPLICATION_REFERENCE.md`
-- `SESSION_LOG.md`
+- `SESSION_LOG.md` — running session tracker at the repository root.
 - `APPLICATION_REFERENCE.md` now serves as the runtime profile seed source for the first end-to-end pipeline.
 
 ## Project structure
