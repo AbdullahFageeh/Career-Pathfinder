@@ -25,6 +25,14 @@ export const architectureSummary: ModuleSummary[] = [
     summary: "Internal ATS-readiness scoring with an 80+ application gate."
   },
   {
+    key: "score",
+    summary: "Opportunity fit scoring and daily shortlist ranking for Saudi roles."
+  },
+  {
+    key: "letters",
+    summary: "Evidence-only cover letters with an optional, guarded LLM refinement pass."
+  },
+  {
     key: "policy",
     summary: "Automation rules, guardrails, caps, filters, and escalation logic."
   },
@@ -38,11 +46,19 @@ export const architectureSummary: ModuleSummary[] = [
   },
   {
     key: "render",
-    summary: "ATS-safe HTML rendering for tailored application materials."
+    summary: "ATS-safe HTML and PDF rendering for tailored CVs and cover letters."
   },
   {
     key: "tracker",
     summary: "Application history, follow-ups, outcomes, and analytics."
+  },
+  {
+    key: "followup",
+    summary: "Automatic day 3, 7, and 14 follow-up ladder with ready-to-send drafts."
+  },
+  {
+    key: "report",
+    summary: "Funnel reporting across discovery, application, follow-up, and outcomes."
   },
   {
     key: "enrich",

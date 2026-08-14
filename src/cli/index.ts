@@ -7,6 +7,16 @@ import {
 } from "../apply/index.js";
 import type { IngestJobPostingInput } from "../ingest/index.js";
 import { loadCandidateProfile } from "../profile/index.js";
+import {
+  runCoverLetterOperation,
+  runDiscoverOperation,
+  runFollowUpOperation,
+  runReportOperation,
+  runResumeOperation,
+  runShortlistOperation
+} from "./operations.js";
+import type { ApplicationDocumentFormat } from "../render/index.js";
+import type { CoverLetterTone } from "../letters/index.js";
 import { architectureSummary } from "../shared/modules.js";
 import type { AutomationMode } from "../shared/contracts.js";
 import {
@@ -31,6 +41,12 @@ type CliDependencies = {
   readTextFile: (path: string) => Promise<string>;
   runPipelineQueueOnce: typeof runPipelineQueueOnce;
   runSingleJobPipeline: typeof runSingleJobPipeline;
+  runShortlistOperation: typeof runShortlistOperation;
+  runResumeOperation: typeof runResumeOperation;
+  runCoverLetterOperation: typeof runCoverLetterOperation;
+  runFollowUpOperation: typeof runFollowUpOperation;
+  runReportOperation: typeof runReportOperation;
+  runDiscoverOperation: typeof runDiscoverOperation;
 };
 
 type ParsedCliOptions = {
@@ -50,7 +66,13 @@ const DEFAULT_CLI_DEPENDENCIES: CliDependencies = {
   readEnv: (name) => process.env[name],
   readTextFile: (path) => readFile(path, "utf8"),
   runPipelineQueueOnce,
-  runSingleJobPipeline
+  runSingleJobPipeline,
+  runShortlistOperation,
+  runResumeOperation,
+  runCoverLetterOperation,
+  runFollowUpOperation,
+  runReportOperation,
+  runDiscoverOperation
 };
 
 export async function runCli(
@@ -83,6 +105,18 @@ export async function runCli(
       return runGreenhouseHostedPrefillCli(args, deps, io);
     case "worker:once":
       return runWorkerOnceCli(args, deps, io);
+    case "shortlist":
+      return runShortlistCli(args, deps, io);
+    case "cv":
+      return runResumeCli(args, deps, io);
+    case "letter":
+      return runCoverLetterCli(args, deps, io);
+    case "followups":
+      return runFollowUpsCli(args, deps, io);
+    case "report":
+      return runReportCli(args, deps, io);
+    case "discover:greenhouse":
+      return runDiscoverCli(args, deps, io);
     default:
       io.stderr(`Unknown command "${command}".`);
       io.stderr("");
@@ -276,6 +310,246 @@ async function runWorkerOnceCli(
   }
 }
 
+async function runShortlistCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const result = await deps.runShortlistOperation({
+      corpusDir: resolveOptionalPath(readOptionalOption(options, "corpus-dir")),
+      storagePath: resolveOptionalPath(readOptionalOption(options, "storage-path")),
+      referencePath: resolveOptionalPath(readOptionalOption(options, "reference-path")),
+      profileId: readOptionalOption(options, "profile-id"),
+      limit: readOptionalNumberOption(options, "limit"),
+      minimumScore: readOptionalNumberOption(options, "min-score"),
+      includeIneligible: options.flags.has("include-ineligible") ? true : undefined,
+      includeStoredJobs: options.flags.has("corpus-only") ? false : undefined,
+      outputPath: resolveOptionalPath(readOptionalOption(options, "output")),
+      isSaudiNational: options.flags.has("saudi-national") ? true : undefined,
+      homeCity: readOptionalOption(options, "home-city")
+    });
+
+    const rows = result.ranked.map(
+      (entry) =>
+        `  ${String(entry.rank).padStart(2, " ")}. [${String(entry.fit.score).padStart(3, " ")}] ${entry.job.title} - ${entry.job.company} (${
+          entry.fit.eligibility.resolvedCity ?? entry.job.location ?? "unknown city"
+        })`
+    );
+
+    const outputLines = [
+      "Shortlist ready.",
+      `- opportunities considered: ${result.totalConsidered}`,
+      `- shortlisted: ${result.ranked.length}`,
+      result.invalidCorpusFiles > 0
+        ? `- unreadable corpus files skipped: ${result.invalidCorpusFiles}`
+        : undefined,
+      result.outputPath ? `- written to: ${result.outputPath}` : undefined,
+      result.ranked.length > 0 ? "" : undefined,
+      ...rows
+    ].filter((line): line is string => typeof line === "string");
+
+    io.stdout(outputLines.join("\n"));
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
+async function runResumeCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const inputPath = requireOption(options, "input");
+    const jobInput = await readJobInput(inputPath, deps);
+    const result = await deps.runResumeOperation({
+      job: jobInput,
+      referencePath: resolveOptionalPath(readOptionalOption(options, "reference-path")),
+      profileId: readOptionalOption(options, "profile-id"),
+      outputDir: resolveOptionalPath(readOptionalOption(options, "output-dir")),
+      formats: readFormatsOption(options),
+      browserExecutablePath: resolveOptionalPath(
+        readOptionalOption(options, "browser-executable-path")
+      )
+    });
+
+    const outputLines = [
+      "Tailored CV generated.",
+      ...result.outputPaths.map((path) => `- document: ${path}`),
+      result.pdfSkippedReason ? `- pdf skipped: ${result.pdfSkippedReason}` : undefined
+    ].filter((line): line is string => typeof line === "string");
+
+    io.stdout(outputLines.join("\n"));
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
+async function runCoverLetterCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const inputPath = requireOption(options, "input");
+    const jobInput = await readJobInput(inputPath, deps);
+
+    const result = await deps.runCoverLetterOperation({
+      job: jobInput,
+      referencePath: resolveOptionalPath(readOptionalOption(options, "reference-path")),
+      profileId: readOptionalOption(options, "profile-id"),
+      tone: readToneOption(options),
+      recipientName: readOptionalOption(options, "recipient"),
+      companyHook: readOptionalOption(options, "company-hook"),
+      outputDir: resolveOptionalPath(readOptionalOption(options, "output-dir")),
+      formats: readFormatsOption(options),
+      browserExecutablePath: resolveOptionalPath(
+        readOptionalOption(options, "browser-executable-path")
+      ),
+      useLlm: options.flags.has("use-llm") ? true : undefined,
+      llmModel: readOptionalOption(options, "llm-model")
+    });
+
+    const outputLines = [
+      "Cover letter generated.",
+      `- words: ${result.draft.wordCount}`,
+      `- refined by llm: ${result.refined ? "yes" : "no"}`,
+      result.refinementNote ? `- refinement note: ${result.refinementNote}` : undefined,
+      result.textPath ? `- text: ${result.textPath}` : undefined,
+      ...result.documentPaths.map((path) => `- document: ${path}`),
+      result.pdfSkippedReason ? `- pdf skipped: ${result.pdfSkippedReason}` : undefined
+    ].filter((line): line is string => typeof line === "string");
+
+    io.stdout(outputLines.join("\n"));
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
+async function runFollowUpsCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const result = await deps.runFollowUpOperation({
+      storagePath: resolveOptionalPath(readOptionalOption(options, "storage-path")),
+      referencePath: resolveOptionalPath(readOptionalOption(options, "reference-path")),
+      profileId: readOptionalOption(options, "profile-id"),
+      offsetDays: readOffsetDaysOption(options),
+      schedule: options.flags.has("no-schedule") ? false : undefined,
+      outputPath: resolveOptionalPath(readOptionalOption(options, "output"))
+    });
+
+    const outputLines = [
+      "Follow-up review complete.",
+      `- newly scheduled: ${result.scheduled}`,
+      `- due now: ${result.due.length}`,
+      result.outputPath ? `- written to: ${result.outputPath}` : undefined,
+      ...result.due.map(
+        (entry) =>
+          `  - ${entry.jobTitle} - ${entry.company} (due ${entry.followUp.dueAt}${
+            entry.overdueDays > 0 ? `, ${entry.overdueDays} day(s) overdue` : ""
+          })`
+      )
+    ].filter((line): line is string => typeof line === "string");
+
+    io.stdout(outputLines.join("\n"));
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
+async function runReportCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const result = await deps.runReportOperation({
+      storagePath: resolveOptionalPath(readOptionalOption(options, "storage-path")),
+      staleAfterDays: readOptionalNumberOption(options, "stale-after-days"),
+      outputPath: resolveOptionalPath(readOptionalOption(options, "output"))
+    });
+
+    const outputLines = [
+      "Funnel report ready.",
+      `- tracked opportunities: ${result.report.totalRecords}`,
+      `- applied: ${result.report.appliedCount}`,
+      `- applied in the last 7 days: ${result.report.weeklyApplied}`,
+      `- follow-ups due now: ${result.report.dueFollowUps.length}`,
+      `- stalled records: ${result.report.staleApplications.length}`,
+      result.outputPath ? `- written to: ${result.outputPath}` : undefined
+    ].filter((line): line is string => typeof line === "string");
+
+    io.stdout(outputLines.join("\n"));
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
+async function runDiscoverCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const boards = readOptionalOption(options, "boards");
+    const result = await deps.runDiscoverOperation({
+      boardTokens: boards
+        ? boards
+            .split(",")
+            .map((token) => token.trim())
+            .filter((token) => token.length > 0)
+        : undefined,
+      maxListingsPerBoard: readOptionalNumberOption(options, "max-per-board"),
+      includeAllTitles: options.flags.has("all-titles") ? true : undefined,
+      storagePath: resolveOptionalPath(readOptionalOption(options, "storage-path")),
+      persist: options.flags.has("no-persist") ? false : undefined,
+      outputDir: resolveOptionalPath(readOptionalOption(options, "save-dir"))
+    });
+
+    const outputLines = [
+      "Greenhouse discovery complete.",
+      `- boards queried: ${result.discovery.boardsQueried.length}`,
+      `- Saudi roles found: ${result.discovery.listings.length}`,
+      `- persisted: ${result.persisted}`,
+      result.savedPaths.length > 0 ? `- saved files: ${result.savedPaths.length}` : undefined,
+      result.discovery.boardsFailed.length > 0
+        ? `- boards failed: ${result.discovery.boardsFailed
+            .map((entry) => `${entry.boardToken} (${entry.reason})`)
+            .join(" | ")}`
+        : undefined,
+      ...result.discovery.listings
+        .slice(0, 10)
+        .map((listing) => `  - ${listing.title} - ${listing.company} (${listing.location ?? "unknown"})`)
+    ].filter((line): line is string => typeof line === "string");
+
+    io.stdout(outputLines.join("\n"));
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
 async function readJobInput(
   inputPath: string,
   deps: CliDependencies
@@ -374,6 +648,55 @@ function readApplyModeOption(options: ParsedCliOptions): AutomationMode | undefi
   throw new Error("Option --apply-mode must be one of observe, supervised, or full-auto.");
 }
 
+function readToneOption(options: ParsedCliOptions): CoverLetterTone | undefined {
+  const value = readOptionalOption(options, "tone");
+  if (!value) {
+    return undefined;
+  }
+  if (value === "direct" || value === "warm" || value === "formal") {
+    return value;
+  }
+  throw new Error("Option --tone must be one of direct, warm, or formal.");
+}
+
+function readFormatsOption(
+  options: ParsedCliOptions
+): ApplicationDocumentFormat[] | undefined {
+  const value = readOptionalOption(options, "formats");
+  if (!value) {
+    return undefined;
+  }
+  const formats = value
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+
+  for (const format of formats) {
+    if (format !== "html" && format !== "pdf") {
+      throw new Error("Option --formats accepts html and pdf only.");
+    }
+  }
+
+  return formats as ApplicationDocumentFormat[];
+}
+
+function readOffsetDaysOption(options: ParsedCliOptions): number[] | undefined {
+  const value = readOptionalOption(options, "offset-days");
+  if (!value) {
+    return undefined;
+  }
+  const offsets = value
+    .split(",")
+    .map((entry) => Number(entry.trim()))
+    .filter((entry) => Number.isFinite(entry));
+
+  if (offsets.length === 0 || offsets.some((offset) => offset <= 0)) {
+    throw new Error("Option --offset-days must be a comma separated list of positive day counts.");
+  }
+
+  return offsets;
+}
+
 function buildDataConsent(
   options: ParsedCliOptions
 ): GreenhouseDataConsent | undefined {
@@ -408,7 +731,9 @@ function formatHelpText(): string {
     formatUsageText(),
     "",
     "Notes:",
+    "- Daily loop: discover:greenhouse, then shortlist, then pipeline:single on the top roles, then followups and report.",
     "- Set GREENHOUSE_JOB_BOARD_API_KEY in your environment for live Greenhouse submissions.",
+    "- Set LLM_API_KEY (or OPENAI_API_KEY) to enable optional cover letter refinement; without it the deterministic draft is used.",
     "- For public hosted Greenhouse pages, use greenhouse:hosted:prefill to open a supervised browser-fill path without the API key.",
     "- The first outbound adapter only submits in supervised mode; other modes fall back to review-needed.",
     "",
@@ -419,6 +744,12 @@ function formatHelpText(): string {
 
 function formatUsageText(): string {
   return [
+    "  node dist/index.js shortlist [--limit <n>] [--min-score <n>] [--corpus-dir <dir>] [--storage-path <path>] [--reference-path <path>] [--home-city <city>] [--output <file.md>] [--corpus-only] [--include-ineligible] [--saudi-national]",
+    "  node dist/index.js discover:greenhouse [--boards <token,token>] [--max-per-board <n>] [--save-dir <dir>] [--storage-path <path>] [--all-titles] [--no-persist]",
+    "  node dist/index.js cv --input <job.json> [--reference-path <path>] [--profile-id <id>] [--output-dir <dir>] [--formats html,pdf] [--browser-executable-path <path>]",
+    "  node dist/index.js letter --input <job.json> [--tone direct|warm|formal] [--recipient <name>] [--company-hook <text>] [--output-dir <dir>] [--formats html,pdf] [--use-llm] [--llm-model <model>]",
+    "  node dist/index.js followups [--storage-path <path>] [--offset-days 3,7,14] [--output <file.md>] [--no-schedule]",
+    "  node dist/index.js report [--storage-path <path>] [--stale-after-days <n>] [--output <file.md>]",
     "  node dist/index.js worker:once [--storage-path <path>] [--worker-id <id>] [--max-jobs <n>]",
     "  node dist/index.js queue:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode supervised] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
     "  node dist/index.js pipeline:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode supervised] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
@@ -430,6 +761,8 @@ export const cliModule = {
   key: "cli",
   summary: "Provide the local control surface for queued and supervised apply workflows.",
   responsibilities: [
+    "Rank the daily shortlist and generate tailored CVs and letters on demand.",
+    "Surface follow-ups that are due and print the funnel report.",
     "Run a single job pipeline end to end from a local job JSON input.",
     "Queue durable single-job runs, including the optional supervised apply stage.",
     "Launch supervised hosted Greenhouse prefills and report queue progress for local monitoring."

@@ -10,6 +10,12 @@
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
     "greenhouse:hosted:prefill": "npm run build && node dist/index.js greenhouse:hosted:prefill",
+    "discover:greenhouse": "npm run build && node dist/index.js discover:greenhouse",
+    "shortlist": "npm run build && node dist/index.js shortlist",
+    "cv": "npm run build && node dist/index.js cv",
+    "letter": "npm run build && node dist/index.js letter",
+    "followups": "npm run build && node dist/index.js followups",
+    "report": "npm run build && node dist/index.js report",
     "pipeline:single": "npm run build && node dist/index.js pipeline:single",
     "queue:single": "npm run build && node dist/index.js queue:single",
     "worker:once": "npm run build && node dist/index.js worker:once"
