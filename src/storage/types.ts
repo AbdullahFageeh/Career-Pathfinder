@@ -1,3 +1,4 @@
+import type { AutomationRun } from "../automation/contracts.js";
 import type {
   ApplicationRecord,
   AtsAssessment,
@@ -25,6 +26,7 @@ export type PipelineStorageSnapshot = {
   atsAssessments: Record<string, AtsAssessment>;
   applicationRecords: Record<string, ApplicationRecord>;
   queueJobs: Record<string, QueueJob>;
+  automationRuns: Record<string, AutomationRun>;
 };
 
 export type PipelineStorage = {
@@ -43,6 +45,10 @@ export type PipelineStorage = {
   getApplicationRecordByJobId: (jobId: string) => Promise<ApplicationRecord | undefined>;
   listApplicationRecords: () => Promise<ApplicationRecord[]>;
   upsertApplicationRecord: (applicationRecord: ApplicationRecord) => Promise<ApplicationRecord>;
+  getAutomationRun: (runId: string) => Promise<AutomationRun | undefined>;
+  getAutomationRunByIdempotencyKey: (idempotencyKey: string) => Promise<AutomationRun | undefined>;
+  listAutomationRuns: () => Promise<AutomationRun[]>;
+  upsertAutomationRun: (run: AutomationRun) => Promise<AutomationRun>;
   getQueueJob: (queueJobId: string) => Promise<QueueJob | undefined>;
   getQueueJobByIdempotencyKey: (idempotencyKey: string) => Promise<QueueJob | undefined>;
   listQueueJobs: () => Promise<QueueJob[]>;

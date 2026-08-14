@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "timeZone": "Asia/Riyadh",
+  "automationMode": "full-auto",
+  "caps": {
+    "dailyApplications": 4,
+    "maxApplicationsPerEmployer": 1,
+    "employerCooldownDays": 30
+  },
+  "thresholds": {
+    "minFitScore": 70,
+    "minAtsScore": 80
+  },
+  "sources": [
+    {
+      "id": "verified-greenhouse-board",
+      "kind": "greenhouse",
+      "capability": "structured-submit",
+      "enabled": false,
+      "boardToken": "replace-with-verified-public-board-token"
+    },
+    {
+      "id": "official-careers-review-queue",
+      "kind": "company-page",
+      "capability": "review-only",
+      "enabled": true
+    }
+  ],
+  "answers": [
+    {
+      "key": "nationality",
+      "value": "Saudi",
+      "approval": "auto-submit",
+      "provenance": {
+        "sourceKind": "candidate-profile",
+        "sourceRef": "APPLICATION_REFERENCE.md:<line>",
+        "verifiedAt": "2026-08-14T00:00:00.000Z"
+      }
+    },
+    {
+      "key": "contract_travel_commitment",
+      "value": true,
+      "approval": "review-only",
+      "provenance": {
+        "sourceKind": "manual",
+        "sourceRef": "Confirm the specific role and dates before reuse.",
+        "verifiedAt": "2026-08-14T00:00:00.000Z"
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 
+import type { AutomationRun } from "../automation/contracts.js";
 import type {
   ApplicationRecord,
   AtsAssessment,
@@ -17,7 +18,7 @@ import type {
   StorageOptions
 } from "./types.js";
 
-const STORAGE_SCHEMA_VERSION = 1;
+const STORAGE_SCHEMA_VERSION = 3;
 const DEFAULT_SQLITE_STORAGE_PATH = resolve(process.cwd(), "data", "pipeline-store.sqlite");
 const DEFAULT_QUEUE_LEASE_DURATION_MS = 5 * 60 * 1000;
 
@@ -79,6 +80,16 @@ export function createSqliteStorage(options: SqliteStorageOptions = {}): Pipelin
     upsertApplicationRecord: async (applicationRecord) => {
       upsertApplicationRecord(await getDatabase(), applicationRecord);
       return applicationRecord;
+    },
+    getAutomationRun: async (runId) =>
+      getStoredEntity(await getDatabase(), "automation_runs", runId),
+    getAutomationRunByIdempotencyKey: async (idempotencyKey) =>
+      getStoredEntityByColumn(await getDatabase(), "automation_runs", "idempotency_key", idempotencyKey),
+    listAutomationRuns: async () =>
+      listStoredEntities(await getDatabase(), "automation_runs", "started_at ASC, id ASC"),
+    upsertAutomationRun: async (run) => {
+      upsertAutomationRun(await getDatabase(), run);
+      return run;
     },
     getQueueJob: async (queueJobId) =>
       getStoredEntity(await getDatabase(), "queue_jobs", queueJobId),
@@ -143,6 +154,14 @@ function applyMigrations(database: DatabaseSync): void {
     );
     CREATE INDEX IF NOT EXISTS idx_application_records_job_id
       ON application_records (job_id);
+    CREATE TABLE IF NOT EXISTS automation_runs (
+      id TEXT PRIMARY KEY,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      started_at TEXT NOT NULL,
+      data TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_automation_runs_started_at
+      ON automation_runs (started_at);
     CREATE TABLE IF NOT EXISTS queue_jobs (
       id TEXT PRIMARY KEY,
       job_id TEXT NOT NULL,
@@ -176,7 +195,8 @@ function readSnapshotFromDatabase(database: DatabaseSync): PipelineStorageSnapsh
     tailoredResumes: readStoredEntityMap<TailoredResume>(database, "tailored_resumes"),
     atsAssessments: readStoredEntityMap<AtsAssessment>(database, "ats_assessments"),
     applicationRecords: readStoredEntityMap<ApplicationRecord>(database, "application_records"),
-    queueJobs: readStoredEntityMap<QueueJob>(database, "queue_jobs")
+    queueJobs: readStoredEntityMap<QueueJob>(database, "queue_jobs"),
+    automationRuns: readStoredEntityMap<AutomationRun>(database, "automation_runs")
   };
 }
 
@@ -279,6 +299,19 @@ function upsertApplicationRecord(database: DatabaseSync, applicationRecord: Appl
       applicationRecord.updatedAt,
       serializeJson(applicationRecord)
     );
+}
+
+function upsertAutomationRun(database: DatabaseSync, run: AutomationRun): void {
+  database
+    .prepare(`
+      INSERT INTO automation_runs (id, idempotency_key, started_at, data)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        idempotency_key = excluded.idempotency_key,
+        started_at = excluded.started_at,
+        data = excluded.data
+    `)
+    .run(run.id, run.idempotencyKey, run.startedAt, serializeJson(run));
 }
 
 function upsertQueueJob(database: DatabaseSync, queueJob: QueueJob): void {

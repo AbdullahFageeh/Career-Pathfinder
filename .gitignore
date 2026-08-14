@@ -10,6 +10,8 @@ SESSION_LOG.md
 /Abdullah_Fageeh_CV*
 
 # Secrets and environment
+automation.config.json
+automation.local.json
 .env
 .env.*
 !.env.example
@@ -27,6 +29,7 @@ venv/
 __pycache__/
 
 # Local runtime data and artifacts
+automation-runs/
 data/
 artifacts/
 logs/

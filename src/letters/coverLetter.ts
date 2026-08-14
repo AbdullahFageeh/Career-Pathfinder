@@ -443,10 +443,10 @@ function buildAlignmentParagraph(
 
   if (focusTerms.length > 0) {
     sentences.push(
-      `Your posting focuses on ${formatList(focusTerms)}, which is the day-to-day scope I already run on site.`
+      `Your posting focuses on ${formatList(focusTerms)}; my live-event operations background includes closely related delivery in these areas.`
     );
   } else {
-    sentences.push(`The scope in your posting matches the delivery work I already run on site.`);
+    sentences.push(`The scope in your posting is closely related to the live-event delivery work I have supported.`);
   }
 
   if (certifications.length > 0) {

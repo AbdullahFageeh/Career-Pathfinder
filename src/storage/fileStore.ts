@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+import type { AutomationRun } from "../automation/contracts.js";
 import type {
   ApplicationRecord,
   AtsAssessment,
@@ -16,7 +17,7 @@ import type {
   StorageOptions
 } from "./types.js";
 
-const STORAGE_SCHEMA_VERSION = 2;
+const STORAGE_SCHEMA_VERSION = 3;
 const DEFAULT_STORAGE_PATH = resolve(process.cwd(), "data", "pipeline-store.json");
 const DEFAULT_QUEUE_LEASE_DURATION_MS = 5 * 60 * 1000;
 const snapshotUpdateQueues = new Map<string, Promise<void>>();
@@ -72,6 +73,26 @@ export function createFileBackedStorage(
       updateSnapshot(storagePath, async (snapshot) => {
         snapshot.applicationRecords[applicationRecord.id] = applicationRecord;
         return applicationRecord;
+      }),
+    getAutomationRun: async (runId) => (await readSnapshot(storagePath)).automationRuns[runId],
+    getAutomationRunByIdempotencyKey: async (idempotencyKey) =>
+      Object.values((await readSnapshot(storagePath)).automationRuns).find(
+        (run) => run.idempotencyKey === idempotencyKey
+      ),
+    listAutomationRuns: async () =>
+      Object.values((await readSnapshot(storagePath)).automationRuns).sort(compareAutomationRuns),
+    upsertAutomationRun: async (run) =>
+      updateSnapshot(storagePath, async (snapshot) => {
+        const conflictingRun = Object.values(snapshot.automationRuns).find(
+          (existing) => existing.id !== run.id && existing.idempotencyKey === run.idempotencyKey
+        );
+        if (conflictingRun) {
+          throw new Error(
+            `Automation run idempotency conflict: key "${run.idempotencyKey}" is already owned by ${conflictingRun.id}.`
+          );
+        }
+        snapshot.automationRuns[run.id] = run;
+        return run;
       }),
     getQueueJob: async (queueJobId) => (await readSnapshot(storagePath)).queueJobs[queueJobId],
     getQueueJobByIdempotencyKey: async (idempotencyKey) =>
@@ -158,7 +179,8 @@ function normalizeSnapshot(value: unknown): PipelineStorageSnapshot {
     tailoredResumes: toRecordMap<TailoredResume>(value.tailoredResumes),
     atsAssessments: toRecordMap<AtsAssessment>(value.atsAssessments),
     applicationRecords: toRecordMap<ApplicationRecord>(value.applicationRecords),
-    queueJobs: toRecordMap<QueueJob>(value.queueJobs)
+    queueJobs: toRecordMap<QueueJob>(value.queueJobs),
+    automationRuns: toRecordMap<AutomationRun>(value.automationRuns)
   };
 }
 
@@ -169,7 +191,8 @@ function createEmptySnapshot(): PipelineStorageSnapshot {
     tailoredResumes: {},
     atsAssessments: {},
     applicationRecords: {},
-    queueJobs: {}
+    queueJobs: {},
+    automationRuns: {}
   };
 }
 
@@ -195,6 +218,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isMissingFileError(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+function compareAutomationRuns(left: AutomationRun, right: AutomationRun): number {
+  return left.startedAt.localeCompare(right.startedAt) || left.id.localeCompare(right.id);
 }
 
 function compareJobs(left: JobPosting, right: JobPosting): number {
