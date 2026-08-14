@@ -21,6 +21,20 @@
       "boardToken": "replace-with-verified-public-board-token"
     },
     {
+      "id": "example-lever-site",
+      "kind": "lever",
+      "capability": "review-only",
+      "enabled": false,
+      "siteToken": "replace-with-public-lever-site-token"
+    },
+    {
+      "id": "example-workable-site",
+      "kind": "workable",
+      "capability": "review-only",
+      "enabled": false,
+      "siteToken": "replace-with-public-workable-account-slug"
+    },
+    {
       "id": "official-careers-review-queue",
       "kind": "company-page",
       "capability": "review-only",

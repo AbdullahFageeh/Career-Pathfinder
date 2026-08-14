@@ -1,12 +1,18 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
-import { ingestJobPosting } from "../ingest/index.js";
+import { ingestJobPosting, type RawJobPostingInput } from "../ingest/index.js";
 import { loadCandidateProfile } from "../profile/index.js";
 import {
   discoverSaudiGreenhouseRoles,
+  discoverSaudiLeverRoles,
+  discoverSaudiWorkableRoles,
   type SaudiBoardDiscoveryOptions,
-  type SaudiBoardDiscoveryResult
+  type SaudiBoardDiscoveryResult,
+  type SaudiLeverDiscoveryOptions,
+  type SaudiLeverDiscoveryResult,
+  type SaudiWorkableDiscoveryOptions,
+  type SaudiWorkableDiscoveryResult
 } from "../sources/index.js";
 import { createSqliteStorage, type PipelineStorage } from "../storage/index.js";
 import type { CandidateProfile, JobPosting } from "../shared/contracts.js";
@@ -27,8 +33,8 @@ export type DailyAutomationOperationOptions = {
 export type DailyAutomationOperationResult = {
   config: AutomationDeskConfig;
   discovery: {
-    boardsQueried: number;
-    boardsFailed: number;
+    sourcesQueried: number;
+    sourcesFailed: number;
     listings: number;
   };
   run: DailyAutomationDeskResult;
@@ -36,11 +42,20 @@ export type DailyAutomationOperationResult = {
   outputPath?: string;
 };
 
+type CombinedDiscovery = {
+  fetchedAt: string;
+  sourcesQueried: string[];
+  sourcesFailed: Array<{ source: string; reason: string }>;
+  listings: RawJobPostingInput[];
+};
+
 type DailyAutomationOperationDependencies = {
   loadCandidateProfile: typeof loadCandidateProfile;
   discoverSaudiGreenhouseRoles: (
     options?: SaudiBoardDiscoveryOptions
   ) => Promise<SaudiBoardDiscoveryResult>;
+  discoverSaudiLeverRoles: (options: SaudiLeverDiscoveryOptions) => Promise<SaudiLeverDiscoveryResult>;
+  discoverSaudiWorkableRoles: (options: SaudiWorkableDiscoveryOptions) => Promise<SaudiWorkableDiscoveryResult>;
   readFile: typeof readFile;
 };
 
@@ -49,13 +64,15 @@ const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "automation.config.json");
 const DEFAULT_DEPENDENCIES: DailyAutomationOperationDependencies = {
   loadCandidateProfile,
   discoverSaudiGreenhouseRoles,
+  discoverSaudiLeverRoles,
+  discoverSaudiWorkableRoles,
   readFile
 };
 
 /**
- * Executes a daily Saudi job discovery pass from explicit, configured
- * Greenhouse boards. It writes an operator report and leaves remote submission
- * to the existing queue worker and its adapter-level safeguards.
+ * Executes one daily Saudi job discovery pass from explicitly configured public
+ * ATS sources. The sources are combined before the trust, fit, cap, queue, and
+ * adapter-level safeguards run, so a new discovery channel cannot bypass them.
  */
 export async function runDailyAutomationOperation(
   options: DailyAutomationOperationOptions = {},
@@ -69,14 +86,35 @@ export async function runDailyAutomationOperation(
     profileId: options.profileId
   });
   const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
-  const boardTokens = config.sources
-    .filter((source) => source.enabled && source.kind === "greenhouse" && source.boardToken)
-    .map((source) => source.boardToken as string);
-  const discovery = await deps.discoverSaudiGreenhouseRoles({
-    boardTokens,
-    filterByTargetTitles: false,
-    now: options.now
-  });
+  const greenhouseTokens = configuredTokens(config, "greenhouse", "boardToken");
+  const leverTokens = configuredTokens(config, "lever", "siteToken");
+  const workableTokens = configuredTokens(config, "workable", "siteToken");
+
+  const [greenhouse, lever, workable] = await Promise.all([
+    greenhouseTokens.length > 0
+      ? deps.discoverSaudiGreenhouseRoles({
+          boardTokens: greenhouseTokens,
+          filterByTargetTitles: false,
+          now: options.now
+        })
+      : Promise.resolve(emptyGreenhouseDiscovery(options.now)),
+    leverTokens.length > 0
+      ? deps.discoverSaudiLeverRoles({
+          siteTokens: leverTokens,
+          filterByTargetTitles: false,
+          now: options.now
+        })
+      : Promise.resolve(emptyLeverDiscovery(options.now)),
+    workableTokens.length > 0
+      ? deps.discoverSaudiWorkableRoles({
+          siteTokens: workableTokens,
+          filterByTargetTitles: false,
+          now: options.now
+        })
+      : Promise.resolve(emptyWorkableDiscovery(options.now))
+  ]);
+
+  const discovery = combineDiscoveries(greenhouse, lever, workable, options.now);
   const jobs = await normalizeDiscoveredJobs(discovery, storage);
   const run = await runDailyAutomationDesk({
     storage,
@@ -107,8 +145,8 @@ export async function runDailyAutomationOperation(
   return {
     config,
     discovery: {
-      boardsQueried: discovery.boardsQueried.length,
-      boardsFailed: discovery.boardsFailed.length,
+      sourcesQueried: discovery.sourcesQueried.length,
+      sourcesFailed: discovery.sourcesFailed.length,
       listings: discovery.listings.length
     },
     run,
@@ -117,10 +155,67 @@ export async function runDailyAutomationOperation(
   };
 }
 
-async function normalizeDiscoveredJobs(
-  discovery: SaudiBoardDiscoveryResult,
-  storage: PipelineStorage
-): Promise<JobPosting[]> {
+function configuredTokens(
+  config: AutomationDeskConfig,
+  kind: "greenhouse" | "lever" | "workable",
+  key: "boardToken" | "siteToken"
+): string[] {
+  return config.sources
+    .filter((source) => source.enabled && source.kind === kind && source[key])
+    .map((source) => source[key] as string);
+}
+
+function combineDiscoveries(
+  greenhouse: SaudiBoardDiscoveryResult,
+  lever: SaudiLeverDiscoveryResult,
+  workable: SaudiWorkableDiscoveryResult,
+  now: string | undefined
+): CombinedDiscovery {
+  return {
+    fetchedAt: now ?? new Date().toISOString(),
+    sourcesQueried: [
+      ...greenhouse.boardsQueried.map((token) => `greenhouse:${token}`),
+      ...lever.sitesQueried.map((token) => `lever:${token}`),
+      ...workable.sitesQueried.map((token) => `workable:${token}`)
+    ],
+    sourcesFailed: [
+      ...greenhouse.boardsFailed.map((entry) => ({ source: `greenhouse:${entry.boardToken}`, reason: entry.reason })),
+      ...lever.sitesFailed.map((entry) => ({ source: `lever:${entry.siteToken}`, reason: entry.reason })),
+      ...workable.sitesFailed.map((entry) => ({ source: `workable:${entry.siteToken}`, reason: entry.reason }))
+    ],
+    listings: [...greenhouse.listings, ...lever.listings, ...workable.listings]
+  };
+}
+
+function emptyGreenhouseDiscovery(now: string | undefined): SaudiBoardDiscoveryResult {
+  return {
+    fetchedAt: now ?? new Date().toISOString(),
+    sourceName: "greenhouse-board",
+    boardsQueried: [],
+    boardsFailed: [],
+    listings: []
+  };
+}
+
+function emptyLeverDiscovery(now: string | undefined): SaudiLeverDiscoveryResult {
+  return {
+    fetchedAt: now ?? new Date().toISOString(),
+    sitesQueried: [],
+    sitesFailed: [],
+    listings: []
+  };
+}
+
+function emptyWorkableDiscovery(now: string | undefined): SaudiWorkableDiscoveryResult {
+  return {
+    fetchedAt: now ?? new Date().toISOString(),
+    sitesQueried: [],
+    sitesFailed: [],
+    listings: []
+  };
+}
+
+async function normalizeDiscoveredJobs(discovery: CombinedDiscovery, storage: PipelineStorage): Promise<JobPosting[]> {
   const jobs = new Map<string, JobPosting>();
 
   for (const listing of discovery.listings) {

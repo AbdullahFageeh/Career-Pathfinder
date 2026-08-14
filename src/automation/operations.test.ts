@@ -106,3 +106,95 @@ test("runs configured Greenhouse discovery through the safe daily queue and writ
 
   rmSync(dir, { recursive: true });
 });
+
+
+test("combines configured Greenhouse, Lever, and Workable discovery without bypassing review-only routing", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "automation-operation-multi-ats-"));
+  const configPath = join(dir, "automation.config.json");
+  writeFileSync(
+    configPath,
+    JSON.stringify({
+      version: 1,
+      timeZone: "Asia/Riyadh",
+      automationMode: "full-auto",
+      autoSubmitEnabled: false,
+      caps: { dailyApplications: 3, maxApplicationsPerEmployer: 1, employerCooldownDays: 30 },
+      thresholds: { minFitScore: 50, minAtsScore: 80 },
+      sources: [
+        { id: "dmg", kind: "greenhouse", capability: "structured-submit", enabled: true, boardToken: "dmgevents" },
+        { id: "eventco", kind: "lever", capability: "review-only", enabled: true, siteToken: "eventco" },
+        { id: "seven", kind: "workable", capability: "review-only", enabled: true, siteToken: "seven-7" }
+      ],
+      answers: [
+        {
+          key: "nationality",
+          value: "Saudi",
+          approval: "auto-submit",
+          provenance: { sourceKind: "candidate-profile", sourceRef: "APPLICATION_REFERENCE.md:1", verifiedAt: "2026-08-14T00:00:00.000Z" }
+        }
+      ]
+    })
+  );
+  const storage = createSqliteStorage({ storagePath: join(dir, "store.sqlite") });
+  const result = await runDailyAutomationOperation(
+    { configPath, storage, now: "2026-08-15T08:00:00.000Z" },
+    {
+      loadCandidateProfile: async () => profile,
+      discoverSaudiGreenhouseRoles: async () => ({
+        fetchedAt: "2026-08-15T08:00:00.000Z",
+        sourceName: "greenhouse-board",
+        boardsQueried: ["dmgevents"],
+        boardsFailed: [],
+        listings: []
+      }),
+      discoverSaudiLeverRoles: async (options) => {
+        assert.deepEqual(options.siteTokens, ["eventco"]);
+        return {
+          fetchedAt: "2026-08-15T08:00:00.000Z",
+          sitesQueried: ["eventco"],
+          sitesFailed: [],
+          listings: [
+            {
+              id: "lever:eventco:1",
+              source: { kind: "job-board", name: "lever-site:eventco" },
+              title: "Venue Operations Manager",
+              company: "Eventco",
+              location: "Riyadh, Saudi Arabia",
+              description: "Lead venue operations and event suppliers.",
+              tags: ["official-source", "saudi-arabia", "site:eventco"],
+              applicationTarget: { platform: "lever", siteToken: "eventco", jobId: "1", url: "https://jobs.lever.co/eventco/1/apply" },
+              discoveredAt: "2026-08-15T08:00:00.000Z"
+            }
+          ]
+        };
+      },
+      discoverSaudiWorkableRoles: async (options) => {
+        assert.deepEqual(options.siteTokens, ["seven-7"]);
+        return {
+          fetchedAt: "2026-08-15T08:00:00.000Z",
+          sitesQueried: ["seven-7"],
+          sitesFailed: [],
+          listings: [
+            {
+              id: "workable:seven-7:1",
+              source: { kind: "job-board", name: "workable-site:seven-7" },
+              title: "Site Operations Manager",
+              company: "SEVEN",
+              location: "Riyadh, Saudi Arabia",
+              description: "Manage site operations and supplier delivery.",
+              tags: ["official-source", "saudi-arabia", "site:seven-7"],
+              applicationTarget: { platform: "workable", siteToken: "seven-7", jobId: "1", url: "https://apply.workable.com/seven-7/j/1" },
+              discoveredAt: "2026-08-15T08:00:00.000Z"
+            }
+          ]
+        };
+      }
+    }
+  );
+
+  assert.equal(result.discovery.sourcesQueried, 3);
+  assert.equal(result.discovery.listings, 2);
+  assert.equal(result.run.queued.length, 2);
+
+  rmSync(dir, { recursive: true });
+});

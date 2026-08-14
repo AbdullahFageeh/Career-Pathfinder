@@ -20,6 +20,7 @@ export type RawJobPostingInput = {
     url?: string;
     platform?: ApplicationPlatform;
     boardToken?: string;
+    siteToken?: string;
     jobId?: string;
     submissionUrl?: string;
   };
@@ -71,11 +72,12 @@ function normalizeApplicationTarget(
 
   const url = normalizeOptionalLine(value.url);
   const boardToken = normalizeOptionalLine(value.boardToken);
+  const siteToken = normalizeOptionalLine(value.siteToken);
   const jobId = normalizeOptionalLine(value.jobId);
   const submissionUrl = normalizeOptionalLine(value.submissionUrl);
   const platform = normalizeApplicationPlatform(value.platform);
 
-  if (!url && !platform && !boardToken && !jobId && !submissionUrl) {
+  if (!url && !platform && !boardToken && !siteToken && !jobId && !submissionUrl) {
     return undefined;
   }
 
@@ -83,6 +85,7 @@ function normalizeApplicationTarget(
     ...(url ? { url } : {}),
     ...(platform ? { platform } : {}),
     ...(boardToken ? { boardToken } : {}),
+    ...(siteToken ? { siteToken } : {}),
     ...(jobId ? { jobId } : {}),
     ...(submissionUrl ? { submissionUrl } : {})
   };
@@ -143,7 +146,7 @@ function normalizeOptionalLine(value: string | undefined): string | undefined {
 function normalizeApplicationPlatform(
   value: ApplicationPlatform | undefined
 ): ApplicationPlatform | undefined {
-  return value === "greenhouse" ? value : undefined;
+  return value === "greenhouse" || value === "lever" || value === "workable" ? value : undefined;
 }
 
 function normalizeWhitespace(value: string): string {

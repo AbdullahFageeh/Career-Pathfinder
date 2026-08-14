@@ -8,7 +8,7 @@ It turns the job search into a controlled daily application desk: collect truste
 
 | Stage | Outcome | Safeguard |
 | --- | --- | --- |
-| Discovery | Queries curated public Greenhouse boards and accepts configurable employer board tokens. | Keeps only Saudi-based roles; retries temporary network failures; records board failures without stopping the run. |
+| Discovery | Queries configured public Greenhouse, Lever, and Workable employer career sources. | Keeps only Saudi-based roles; retries transient failures; records source failures without stopping the run. |
 | Qualification | Ranks saved and discovered roles by title, delivery evidence, location, and recency. | Excludes non-Saudi roles and Saudi-national-only roles unless the candidate profile confirms eligibility. |
 | Materials | Produces a tailored CV in ATS-safe HTML/PDF and a cover letter in HTML, text, and optional PDF. | Uses only verified profile facts; optional AI editing is rejected if it adds unsupported claims. |
 | Automation desk | Runs configured public-board discovery, applies source/fit/cap rules, persists a daily run record, and writes a review queue. | Default cap: 4/day; stale, duplicate, unsupported, and employer-cooldown roles stop for review. |
@@ -32,7 +32,7 @@ For the Saudi-national eligibility filter, include the real answer under **Ident
 cp automation.config.example.json automation.config.json
 ```
 
-Keep `"autoSubmitEnabled": false` for the first live run. Add only official public Greenhouse board tokens you have verified. The file is ignored by Git.
+Keep `"autoSubmitEnabled": false` for the first live run. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. The file is ignored by Git.
 
 ### 3. Install and check the project
 
@@ -58,7 +58,7 @@ Open `artifacts/daily-shortlist.md`, then work the first two roles that you genu
 
 ## Automated daily desk
 
-Run the automation command once after creating your private profile and config. It discovers only enabled official Greenhouse boards, rejects stale or duplicate roles, applies Saudi eligibility and fit rules, respects daily and employer caps, queues selected roles, and writes a compact review sheet.
+Run the automation command once after creating your private profile and config. It discovers enabled official Greenhouse boards plus configured public Lever and Workable career sites, rejects stale or duplicate roles, applies Saudi eligibility and fit rules, respects daily and employer caps, queues selected roles, and writes a compact review sheet.
 
 ```bash
 npm run automation:run -- \
@@ -74,7 +74,33 @@ The first run should remain **queue-only** because `autoSubmitEnabled` is false.
 npm run worker:once -- --storage-path ./data/pipeline-store.sqlite
 ```
 
-A structured Greenhouse application can progress to API submission only when all of the following are true: the source is configured and official, the role passes source/fit/cap checks, every required question has a verified answer, required consent is present, `GREENHOUSE_JOB_BOARD_API_KEY` is available, and `autoSubmitEnabled` is explicitly true in the private config. Unsupported sites remain in the review queue.
+A structured Greenhouse application can progress to API submission only when all of the following are true: the source is configured and official, the role passes source/fit/cap checks, every required question has a verified answer, required consent is present, `GREENHOUSE_JOB_BOARD_API_KEY` is available, and `autoSubmitEnabled` is explicitly true in the private config. Lever and Workable are discovery-plus-review channels: their candidate-creation APIs require credentials owned by the hiring employer, so they cannot auto-submit from an applicant profile.
+
+### Add Lever and Workable sources
+
+Add only career-site slugs you have verified from the employer URL. Both channels are intentionally review-only:
+
+```json
+{
+  "id": "example-lever-site",
+  "kind": "lever",
+  "capability": "review-only",
+  "enabled": true,
+  "siteToken": "employer-lever-slug"
+}
+```
+
+```json
+{
+  "id": "example-workable-site",
+  "kind": "workable",
+  "capability": "review-only",
+  "enabled": true,
+  "siteToken": "employer-workable-slug"
+}
+```
+
+The daily run fetches their public listings, scores the Saudi roles, creates tailored material for qualified roles, and stops at a review-ready application link. Never set either channel to `structured-submit`.
 
 ## The daily loop
 
@@ -220,7 +246,7 @@ The test suite covers Saudi eligibility, source normalization and transient retr
 
 ## Current limits
 
-The Greenhouse discovery module cannot discover every Saudi vacancy, and public board APIs may be intermittently unavailable. Use employer career pages, referrals, LinkedIn, and job-board alerts alongside it. The automated sender is deliberately restricted to configured Greenhouse API channels; company pages, LinkedIn, and other portals remain review-only until a reliable structured adapter exists.
+Greenhouse, Lever, and Workable discovery cannot cover every Saudi vacancy, and public career data may be intermittently unavailable. Use employer career pages, referrals, LinkedIn, and job-board alerts alongside it. The automated sender is deliberately restricted to configured Greenhouse API channels; Lever, Workable, company pages, LinkedIn, and other portals remain review-only unless the hiring employer authorizes a dedicated structured adapter.
 
 ## Licence
 

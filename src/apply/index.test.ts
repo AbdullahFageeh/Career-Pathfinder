@@ -728,3 +728,47 @@ test("full-auto Greenhouse preparation requires an explicit structured-channel o
 
   assert.equal(allowed.ready, true);
 });
+
+
+test("prepareJobApplicationSubmission keeps Workable and Lever roles in review-only mode", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-review-only-"));
+  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const profile = createCandidateProfile(resumePath);
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+  await writeFile(resumePath, "resume-pdf-placeholder", "utf8");
+
+  for (const platform of ["lever", "workable"] as const) {
+    const job: JobPosting = {
+      ...greenhouseJob,
+      id: `job-${platform}-venue-operations`,
+      source: {
+        kind: "job-board",
+        name: `${platform}-site:eventco`,
+        url: `https://${platform}.example.test/jobs/1`
+      },
+      applicationTarget: {
+        platform,
+        siteToken: "eventco",
+        jobId: "1",
+        url: `https://${platform}.example.test/jobs/1/apply`
+      }
+    };
+    const resume = { ...tailoredResume, id: `${job.id}:tailored`, jobId: job.id };
+    const result = await prepareJobApplicationSubmission(
+      job,
+      createAtsReadyRecord(job),
+      profile,
+      resume,
+      { mode: "full-auto", allowFullAutoSubmission: true, now: "2026-06-10T08:10:00.000Z" }
+    );
+
+    assert.equal(result.ready, false);
+    if (!result.ready) {
+      assert.match(result.reason, /No supported outbound application adapter/);
+      assert.equal(result.attempt.outcome, "review-needed");
+    }
+  }
+});

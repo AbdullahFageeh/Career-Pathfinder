@@ -4,7 +4,7 @@ export const MAX_DAILY_APPLICATION_CAP = 5;
 export const MAX_EMPLOYER_COOLDOWN_DAYS = 365;
 
 export type SourceCapability = "structured-submit" | "prefill-only" | "review-only";
-export type AutomationSourceKind = "greenhouse" | "company-page" | "job-board" | "manual";
+export type AutomationSourceKind = "greenhouse" | "lever" | "workable" | "company-page" | "job-board" | "manual";
 export type AnswerApproval = "auto-submit" | "review-only";
 export type AnswerProvenanceSourceKind = "candidate-profile" | "cv" | "manual";
 export type ReviewReason =
@@ -36,6 +36,7 @@ export type AutomationSourceConfig = {
   capability: SourceCapability;
   enabled: boolean;
   boardToken?: string;
+  siteToken?: string;
 };
 
 export type AnswerProvenance = {
@@ -150,7 +151,11 @@ export function findReusableApprovedAnswer(
 
 function parseSource(input: unknown): AutomationSourceConfig {
   const value = asRecord(input, "Each automation source must be an object.");
-  const kind = requireEnum(value.kind, "source kind", ["greenhouse", "company-page", "job-board", "manual"] as const);
+  const kind = requireEnum(
+    value.kind,
+    "source kind",
+    ["greenhouse", "lever", "workable", "company-page", "job-board", "manual"] as const
+  );
   const capability = requireEnum(
     value.capability,
     "source capability",
@@ -165,6 +170,13 @@ function parseSource(input: unknown): AutomationSourceConfig {
 
   if (typeof value.boardToken === "string" && value.boardToken.trim()) {
     source.boardToken = value.boardToken.trim();
+  }
+  if (typeof value.siteToken === "string" && value.siteToken.trim()) {
+    source.siteToken = value.siteToken.trim();
+  }
+
+  if ((kind === "lever" || kind === "workable") && !source.siteToken) {
+    throw new Error(`${kind} sources require a siteToken.`);
   }
 
   if (capability === "structured-submit") {

@@ -61,12 +61,13 @@ export type JobSource = {
   url?: string;
 };
 
-export type ApplicationPlatform = "greenhouse";
+export type ApplicationPlatform = "greenhouse" | "lever" | "workable";
 
 export type ApplicationTarget = {
   url?: string;
   platform?: ApplicationPlatform;
   boardToken?: string;
+  siteToken?: string;
   jobId?: string;
   submissionUrl?: string;
 };

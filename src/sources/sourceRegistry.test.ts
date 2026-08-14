@@ -26,6 +26,20 @@ const config = validateAutomationDeskConfig({
       boardToken: "dmgevents"
     },
     {
+      id: "eventco-lever",
+      kind: "lever",
+      capability: "review-only",
+      enabled: true,
+      siteToken: "eventco"
+    },
+    {
+      id: "seven-workable",
+      kind: "workable",
+      capability: "review-only",
+      enabled: true,
+      siteToken: "seven-7"
+    },
+    {
       id: "official-company-review",
       kind: "company-page",
       capability: "review-only",
@@ -108,6 +122,42 @@ test("keeps configured company-page sources in review-only mode", () => {
 
   assert.equal(assessment.accepted, true);
   assert.equal(assessment.capability, "review-only");
+});
+
+test("accepts configured Workable and Lever sites only in review-only mode", () => {
+  const lever = assessTrustedSource(
+    buildJob({
+      id: "lever:eventco:123",
+      source: { kind: "job-board", name: "lever-site:eventco", url: "https://jobs.lever.co/eventco/123" },
+      applicationTarget: {
+        url: "https://jobs.lever.co/eventco/123/apply",
+        platform: "lever",
+        siteToken: "eventco",
+        jobId: "123"
+      },
+      tags: ["official-source", "saudi-arabia", "source:lever", "site:eventco"]
+    }),
+    config,
+    { now: "2026-08-15T08:00:00.000Z" }
+  );
+  const workable = assessTrustedSource(
+    buildJob({
+      id: "workable:seven-7:123",
+      source: { kind: "job-board", name: "workable-site:seven-7", url: "https://apply.workable.com/seven-7/j/123" },
+      applicationTarget: {
+        url: "https://apply.workable.com/seven-7/j/123",
+        platform: "workable",
+        siteToken: "seven-7",
+        jobId: "123"
+      },
+      tags: ["official-source", "saudi-arabia", "source:workable", "site:seven-7"]
+    }),
+    config,
+    { now: "2026-08-15T08:00:00.000Z" }
+  );
+
+  assert.equal(lever.capability, "review-only");
+  assert.equal(workable.capability, "review-only");
 });
 
 test("deduplicates roles by application URL and keeps the freshest record", () => {

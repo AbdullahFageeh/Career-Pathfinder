@@ -13,6 +13,18 @@ export {
   type SaudiBoardDiscoveryResult
 } from "./saudiGreenhouseBoards.js";
 export {
+  discoverSaudiLeverRoles,
+  normalizeLeverPosting,
+  type SaudiLeverDiscoveryOptions,
+  type SaudiLeverDiscoveryResult
+} from "./saudiLeverBoards.js";
+export {
+  discoverSaudiWorkableRoles,
+  normalizeWorkableJob,
+  type SaudiWorkableDiscoveryOptions,
+  type SaudiWorkableDiscoveryResult
+} from "./saudiWorkableBoards.js";
+export {
   loadRoleCorpus,
   resolveDefaultRoleCorpusDir,
   type RoleCorpusLoadOptions,
@@ -23,7 +35,7 @@ export const sourcesModule = {
   summary: "Define scheduled discovery across boards, company pages, and manual feeds.",
   responsibilities: [
     "Register and configure job-source adapters.",
-    "Discover Saudi roles from public Greenhouse boards as the primary live lane.",
+    "Discover Saudi roles from configured public Greenhouse, Lever, and Workable career sources.",
     "Replay the curated local role corpus so saved leads keep flowing through scoring.",
     "Fetch and normalize Lane 1 listings from supported official sources.",
     "Support polling schedules and deduplication handoff.",

@@ -531,7 +531,7 @@ async function runDailyAutomationCli(
         "Daily automation desk complete.",
         `- run: ${result.run.run.id}`,
         `- skipped: ${result.run.skipped ? "yes" : "no"}`,
-        `- boards queried: ${result.discovery.boardsQueried}`,
+        `- sources queried: ${result.discovery.sourcesQueried}`,
         `- roles found: ${result.discovery.listings}`,
         `- queued: ${result.run.queued.length}`,
         `- review required: ${result.run.reviewRequired.length}`,

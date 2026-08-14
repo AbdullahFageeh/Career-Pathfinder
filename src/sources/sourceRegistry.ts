@@ -29,9 +29,10 @@ export type TrustedSourceOptions = {
 };
 
 /**
- * Resolves a job only against explicitly enabled source entries. Greenhouse must
- * match its configured board token; company pages remain review-only unless a
- * future source entry proves an official structured submission path.
+ * Resolves a job only against explicitly enabled source entries. Greenhouse
+ * matches a board token; Lever and Workable match a configured public site
+ * token and remain review-only unless a future employer-authorized adapter is
+ * added.
  */
 export function assessTrustedSource(
   job: JobPosting,
@@ -127,6 +128,16 @@ function resolveConfiguredSource(
     );
   }
 
+  if ((platform === "lever" || platform === "workable") && hasOfficialSourceSignal(job)) {
+    const siteToken = job.applicationTarget?.siteToken ?? readSiteToken(job.tags);
+    if (!siteToken) {
+      return undefined;
+    }
+    return enabledSources.find(
+      (source) => source.kind === platform && source.siteToken?.toLowerCase() === siteToken.toLowerCase()
+    );
+  }
+
   if (job.source.kind === "company-page" && hasOfficialSourceSignal(job)) {
     return enabledSources.find((source) => source.kind === "company-page");
   }
@@ -145,6 +156,11 @@ function hasOfficialSourceSignal(job: JobPosting): boolean {
 function readBoardToken(tags: string[]): string | undefined {
   const tag = tags.find((entry) => entry.toLowerCase().startsWith("board:"));
   return tag?.slice("board:".length).trim() || undefined;
+}
+
+function readSiteToken(tags: string[]): string | undefined {
+  const tag = tags.find((entry) => entry.toLowerCase().startsWith("site:"));
+  return tag?.slice("site:".length).trim() || undefined;
 }
 
 function isFresh(discoveredAt: string, now: string | undefined, maxAgeDays: number | undefined): boolean {
