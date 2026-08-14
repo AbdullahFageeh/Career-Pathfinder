@@ -1,7 +1,7 @@
 {
   "version": 1,
   "timeZone": "Asia/Riyadh",
-  "automationMode": "full-auto",
+  "automationMode": "observe",
   "autoSubmitEnabled": false,
   "caps": {
     "dailyApplications": 4,

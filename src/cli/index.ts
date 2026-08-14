@@ -13,6 +13,7 @@ import {
   runFollowUpOperation,
   runReportOperation,
   runResumeOperation,
+  runReviewPacketOperation,
   runShortlistOperation
 } from "./operations.js";
 import type { ApplicationDocumentFormat } from "../render/index.js";
@@ -44,6 +45,7 @@ type CliDependencies = {
   runSingleJobPipeline: typeof runSingleJobPipeline;
   runShortlistOperation: typeof runShortlistOperation;
   runResumeOperation: typeof runResumeOperation;
+  runReviewPacketOperation: typeof runReviewPacketOperation;
   runCoverLetterOperation: typeof runCoverLetterOperation;
   runFollowUpOperation: typeof runFollowUpOperation;
   runReportOperation: typeof runReportOperation;
@@ -71,6 +73,7 @@ const DEFAULT_CLI_DEPENDENCIES: CliDependencies = {
   runSingleJobPipeline,
   runShortlistOperation,
   runResumeOperation,
+  runReviewPacketOperation,
   runCoverLetterOperation,
   runFollowUpOperation,
   runReportOperation,
@@ -112,6 +115,8 @@ export async function runCli(
       return runShortlistCli(args, deps, io);
     case "cv":
       return runResumeCli(args, deps, io);
+    case "review:packets":
+      return runReviewPacketsCli(args, deps, io);
     case "letter":
       return runCoverLetterCli(args, deps, io);
     case "followups":
@@ -389,6 +394,42 @@ async function runResumeCli(
       "Tailored CV generated.",
       ...result.outputPaths.map((path) => `- document: ${path}`),
       result.pdfSkippedReason ? `- pdf skipped: ${result.pdfSkippedReason}` : undefined
+    ].filter((line): line is string => typeof line === "string");
+
+    io.stdout(outputLines.join("\n"));
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
+async function runReviewPacketsCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const jobId = readOptionalOption(options, "job-id");
+    const result = await deps.runReviewPacketOperation({
+      storagePath: resolveOptionalPath(readOptionalOption(options, "storage-path")),
+      referencePath: resolveOptionalPath(readOptionalOption(options, "reference-path")),
+      profileId: readOptionalOption(options, "profile-id"),
+      outputDir: resolveOptionalPath(readOptionalOption(options, "output-dir")),
+      formats: readFormatsOption(options),
+      browserExecutablePath: resolveOptionalPath(readOptionalOption(options, "browser-executable-path")),
+      ...(jobId ? { jobIds: [jobId] } : {})
+    });
+    const outputLines = [
+      "Review packets generated.",
+      `- ready: ${result.packets.length}`,
+      ...result.packets.flatMap((packet) => [
+        `- packet: ${packet.reviewPath}`,
+        packet.applicationUrl ? `  application: ${packet.applicationUrl}` : undefined,
+        packet.prefillCommand ? `  greenhouse prefill: ${packet.prefillCommand}` : undefined
+      ]),
+      result.skippedJobIds.length > 0 ? `- skipped missing jobs: ${result.skippedJobIds.join(", ")}` : undefined
     ].filter((line): line is string => typeof line === "string");
 
     io.stdout(outputLines.join("\n"));
@@ -779,7 +820,8 @@ function formatHelpText(): string {
     "- Set GREENHOUSE_JOB_BOARD_API_KEY in your environment for live Greenhouse submissions.",
     "- Set LLM_API_KEY (or OPENAI_API_KEY) to enable optional cover letter refinement; without it the deterministic draft is used.",
     "- For public hosted Greenhouse pages, use greenhouse:hosted:prefill to open a supervised browser-fill path without the API key.",
-    "- automation:run discovers configured trusted Greenhouse boards, queues only eligible high-fit roles, and writes a review queue.",
+    "- automation:run discovers configured trusted employer sources, queues only eligible high-fit roles, and writes a review queue.",
+    "- review:packets creates tailored CV and cover-letter files plus an exact employer-form handoff for ATS-passed roles.",
     "- Full-auto structured submission remains disabled until autoSubmitEnabled is explicitly set in your private automation config.",
     "",
     "Implemented architecture modules:",
@@ -793,6 +835,7 @@ function formatUsageText(): string {
     "  node dist/index.js discover:greenhouse [--boards <token,token>] [--max-per-board <n>] [--save-dir <dir>] [--storage-path <path>] [--all-titles] [--no-persist]",
     "  node dist/index.js automation:run [--config <automation.config.json>] [--storage-path <path>] [--reference-path <path>] [--profile-id <id>] [--output <review.md>]",
     "  node dist/index.js cv --input <job.json> [--reference-path <path>] [--profile-id <id>] [--output-dir <dir>] [--formats html,pdf] [--browser-executable-path <path>]",
+    "  node dist/index.js review:packets [--job-id <id>] [--storage-path <path>] [--reference-path <path>] [--profile-id <id>] [--output-dir <dir>] [--formats html,pdf] [--browser-executable-path <path>]",
     "  node dist/index.js letter --input <job.json> [--tone direct|warm|formal] [--recipient <name>] [--company-hook <text>] [--output-dir <dir>] [--formats html,pdf] [--use-llm] [--llm-model <model>]",
     "  node dist/index.js followups [--storage-path <path>] [--offset-days 3,7,14] [--output <file.md>] [--no-schedule]",
     "  node dist/index.js report [--storage-path <path>] [--stale-after-days <n>] [--output <file.md>]",

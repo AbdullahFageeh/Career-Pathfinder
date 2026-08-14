@@ -387,3 +387,52 @@ test("runCli automation:run forwards private paths and prints the daily queue su
   assert.match(stdout[0] ?? "", /roles found: 5/);
   assert.match(stdout[0] ?? "", /queued: 1/);
 });
+
+
+test("runCli review:packets forwards selected job and prints the manual handoff", async () => {
+  const stdout: string[] = [];
+  let captured: Record<string, unknown> | undefined;
+
+  const exitCode = await runCli(
+    [
+      "review:packets",
+      "--job-id",
+      "workable:seven-7:123",
+      "--storage-path",
+      "data/pipeline-store.sqlite",
+      "--reference-path",
+      "APPLICATION_REFERENCE.md",
+      "--output-dir",
+      "artifacts/review",
+      "--formats",
+      "pdf,html"
+    ],
+    {
+      runReviewPacketOperation: async (options) => {
+        captured = options as unknown as Record<string, unknown>;
+        return {
+          packets: [
+            {
+              jobId: "workable:seven-7:123",
+              title: "Venue Operations Manager",
+              company: "SEVEN",
+              platform: "workable",
+              applicationUrl: "https://apply.workable.com/seven-7/j/123",
+              reviewPath: "/tmp/review-packet.md",
+              resumePaths: ["/tmp/cv.pdf"],
+              coverLetterPaths: ["/tmp/cover-letter.pdf"]
+            }
+          ],
+          skippedJobIds: []
+        };
+      }
+    },
+    { stdout: (message) => stdout.push(message) }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(captured?.jobIds, ["workable:seven-7:123"]);
+  assert.match(String(captured?.storagePath), /data\/pipeline-store\.sqlite$/);
+  assert.match(stdout[0] ?? "", /Review packets generated/);
+  assert.match(stdout[0] ?? "", /apply\.workable\.com/);
+});

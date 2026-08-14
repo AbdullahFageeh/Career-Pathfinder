@@ -32,7 +32,7 @@ For the Saudi-national eligibility filter, include the real answer under **Ident
 cp automation.config.example.json automation.config.json
 ```
 
-Keep `"autoSubmitEnabled": false` for the first live run. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. The file is ignored by Git.
+Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. The file is ignored by Git.
 
 ### 3. Install and check the project
 
@@ -68,13 +68,17 @@ npm run automation:run -- \
   --output ./artifacts/automation-review.md
 ```
 
-The first run should remain **queue-only** because `autoSubmitEnabled` is false. Read `artifacts/automation-review.md`, then process the queued work with:
+The first run remains **queue-only**. Read `artifacts/automation-review.md`, then process queued work and generate the review packets:
 
 ```bash
 npm run worker:once -- --storage-path ./data/pipeline-store.sqlite
+npm run review:packets -- \
+  --storage-path ./data/pipeline-store.sqlite \
+  --reference-path ./APPLICATION_REFERENCE.md \
+  --output-dir ./artifacts/review
 ```
 
-A structured Greenhouse application can progress to API submission only when all of the following are true: the source is configured and official, the role passes source/fit/cap checks, every required question has a verified answer, required consent is present, `GREENHOUSE_JOB_BOARD_API_KEY` is available, and `autoSubmitEnabled` is explicitly true in the private config. Lever and Workable are discovery-plus-review channels: their candidate-creation APIs require credentials owned by the hiring employer, so they cannot auto-submit from an applicant profile.
+Each packet includes a tailored PDF/HTML CV, cover letter, exact employer application URL, and a Greenhouse prefill command where that hosted form supports it. You review the facts and submit the employer form yourself. Greenhouse, Lever, Workable, LinkedIn, and other employer portals remain manual-final-click channels; no employer API key is needed for this workflow.
 
 ### Add Lever and Workable sources
 
@@ -109,9 +113,10 @@ Run this sequence on a workday. It is designed to take **15–25 minutes** once 
 | Order | Command | What to do next |
 | --- | --- | --- |
 | 1 | `npm run automation:run -- --config ./automation.config.json --reference-path ./APPLICATION_REFERENCE.md --storage-path ./data/pipeline-store.sqlite --output ./artifacts/automation-review.md` | Review only the held items; trusted, high-fit roles are queued automatically. |
-| 2 | `npm run worker:once -- --storage-path ./data/pipeline-store.sqlite` | Generate tailored materials, assess ATS fit, and invoke only the permitted structured adapter path. |
-| 3 | `npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md` | Send only the messages that remain relevant after a quick human review. |
-| 4 | `npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md` | Use the report to identify stalled applications and decide the next week’s focus. |
+| 2 | `npm run worker:once -- --storage-path ./data/pipeline-store.sqlite` | Generate tailored materials and assess ATS fit without submitting. |
+| 3 | `npm run review:packets -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output-dir ./artifacts/review` | Open each packet, attach its tailored CV, check every answer, and make the final click yourself. |
+| 4 | `npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md` | Send only the messages that remain relevant after a quick human review. |
+| 5 | `npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md` | Use the report to identify stalled applications and decide the next week’s focus. |
 
 ## Core commands
 
@@ -246,7 +251,7 @@ The test suite covers Saudi eligibility, source normalization and transient retr
 
 ## Current limits
 
-Greenhouse, Lever, and Workable discovery cannot cover every Saudi vacancy, and public career data may be intermittently unavailable. Use employer career pages, referrals, LinkedIn, and job-board alerts alongside it. The automated sender is deliberately restricted to configured Greenhouse API channels; Lever, Workable, company pages, LinkedIn, and other portals remain review-only unless the hiring employer authorizes a dedicated structured adapter.
+Greenhouse, Lever, and Workable discovery cannot cover every Saudi vacancy, and public career data may be intermittently unavailable. Use employer career pages, referrals, LinkedIn, and job-board alerts alongside it. The review queue deliberately prepares documents and form handoffs but never makes the final employer submission. Greenhouse, Lever, Workable, company pages, LinkedIn, and other portals remain final-click review channels unless the hiring employer authorizes a dedicated structured adapter.
 
 ## Licence
 

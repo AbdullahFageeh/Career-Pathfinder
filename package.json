@@ -14,6 +14,7 @@
     "automation:run": "npm run build && node dist/index.js automation:run",
     "shortlist": "npm run build && node dist/index.js shortlist",
     "cv": "npm run build && node dist/index.js cv",
+    "review:packets": "npm run build && node dist/index.js review:packets",
     "letter": "npm run build && node dist/index.js letter",
     "followups": "npm run build && node dist/index.js followups",
     "report": "npm run build && node dist/index.js report",

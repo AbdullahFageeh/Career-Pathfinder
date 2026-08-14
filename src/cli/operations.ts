@@ -255,6 +255,181 @@ export async function runCoverLetterOperation(
   };
 }
 
+export type ReviewPacketOperationOptions = {
+  storagePath?: string;
+  referencePath?: string;
+  profileId?: string;
+  outputDir?: string;
+  jobIds?: readonly string[];
+  formats?: readonly ApplicationDocumentFormat[];
+  browserExecutablePath?: string;
+  now?: string;
+  storage?: PipelineStorage;
+};
+
+export type ReviewPacket = {
+  jobId: string;
+  title: string;
+  company: string;
+  platform: string;
+  applicationUrl?: string;
+  reviewPath: string;
+  resumePaths: string[];
+  coverLetterPaths: string[];
+  prefillCommand?: string;
+};
+
+export type ReviewPacketOperationResult = {
+  packets: ReviewPacket[];
+  skippedJobIds: string[];
+};
+
+/**
+ * Creates a compact review packet for each ATS-passed role. It generates a
+ * tailored PDF/HTML CV, cover letter, direct application URL, and—where
+ * supported—a safe Greenhouse prefill command. It never submits an application.
+ */
+export async function runReviewPacketOperation(
+  options: ReviewPacketOperationOptions = {}
+): Promise<ReviewPacketOperationResult> {
+  const profile = await loadCandidateProfile({
+    referencePath: options.referencePath,
+    profileId: options.profileId
+  });
+  const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
+  const outputDir = resolve(options.outputDir ?? join(process.cwd(), "artifacts", "review"));
+  const requestedJobIds = options.jobIds ? new Set(options.jobIds) : undefined;
+  const records = await storage.listApplicationRecords();
+  const packets: ReviewPacket[] = [];
+  const skippedJobIds: string[] = [];
+
+  await mkdir(outputDir, { recursive: true });
+
+  for (const record of records) {
+    if (record.status !== "ats-passed" || (requestedJobIds && !requestedJobIds.has(record.jobId))) {
+      continue;
+    }
+    const job = await storage.getJobPosting(record.jobId);
+    if (!job) {
+      skippedJobIds.push(record.jobId);
+      continue;
+    }
+
+    const resume = buildTailoredResume(profile, job);
+    const renderedResume = await renderResumeDocument(profile, job, resume, {
+      outputDir,
+      formats: options.formats ?? ["pdf", "html"],
+      ...(options.browserExecutablePath ? { browserExecutablePath: options.browserExecutablePath } : {})
+    });
+    const draft = buildCoverLetterDraft(profile, job, resume, {
+      ...(options.now ? { now: options.now } : {})
+    });
+    const letterStem = buildDocumentFileStem(profile, job, "Cover-Letter");
+    const letterHtml = renderCoverLetterDocumentHtml(profile, job, {
+      salutation: draft.salutation,
+      paragraphs: draft.paragraphs,
+      signOff: draft.signOff
+    });
+    const renderedLetter = await writeApplicationDocument(letterHtml, letterStem, {
+      outputDir,
+      formats: options.formats ?? ["pdf", "html"],
+      ...(options.browserExecutablePath ? { browserExecutablePath: options.browserExecutablePath } : {})
+    });
+    const letterTextPath = join(renderedLetter.outputDir, `${letterStem}.txt`);
+    await writeFile(letterTextPath, formatCoverLetterText(draft, profile), "utf8");
+
+    const applicationUrl = job.applicationTarget?.url ?? job.source.url;
+    const resumePaths = renderedResume.documents.map((document) => document.outputPath);
+    const coverLetterPaths = [...renderedLetter.documents.map((document) => document.outputPath), letterTextPath];
+    const prefillCommand = buildReviewPrefillCommand(job, resumePaths);
+    const packetStem = `${buildDocumentFileStem(profile, job, "CV")}-Review-Packet`;
+    const reviewPath = join(outputDir, `${packetStem}.md`);
+    await writeFile(
+      reviewPath,
+      formatReviewPacketMarkdown({
+        job,
+        record,
+        applicationUrl,
+        resumePaths,
+        coverLetterPaths,
+        prefillCommand,
+        generatedAt: options.now
+      }),
+      "utf8"
+    );
+
+    packets.push({
+      jobId: job.id,
+      title: job.title,
+      company: job.company,
+      platform: job.applicationTarget?.platform ?? "manual",
+      ...(applicationUrl ? { applicationUrl } : {}),
+      reviewPath,
+      resumePaths,
+      coverLetterPaths,
+      ...(prefillCommand ? { prefillCommand } : {})
+    });
+  }
+
+  return { packets, skippedJobIds };
+}
+
+function buildReviewPrefillCommand(job: JobPosting, resumePaths: string[]): string | undefined {
+  if (job.applicationTarget?.platform !== "greenhouse" || !job.applicationTarget.url) {
+    return undefined;
+  }
+  const resumePath = resumePaths.find((path) => path.toLowerCase().endsWith(".pdf"));
+  return [
+    "npm run greenhouse:hosted:prefill --",
+    `--url ${quoteShellValue(job.applicationTarget.url)}`,
+    ...(resumePath ? [`--resume-path ${quoteShellValue(resumePath)}`] : []),
+    "--keep-open"
+  ].join(" ");
+}
+
+function formatReviewPacketMarkdown(input: {
+  job: JobPosting;
+  record: ApplicationRecord;
+  applicationUrl?: string;
+  resumePaths: string[];
+  coverLetterPaths: string[];
+  prefillCommand?: string;
+  generatedAt?: string;
+}): string {
+  const lines = [
+    `# Review packet — ${input.job.title} at ${input.job.company}`,
+    `Generated: ${input.generatedAt ?? new Date().toISOString()}`,
+    "",
+    "## Final review",
+    `- **ATS score:** ${input.record.atsScore ?? "Not recorded"}/100`,
+    `- **Location:** ${input.job.location ?? "Not specified"}`,
+    `- **Platform:** ${input.job.applicationTarget?.platform ?? "manual"}`,
+    `- **Application:** ${input.applicationUrl ? `[Open the employer form](${input.applicationUrl})` : "No application URL recorded."}`,
+    "",
+    "## Attach before your final click",
+    ...input.resumePaths.map((path) => `- CV file: ${path}`),
+    ...input.coverLetterPaths.map((path) => `- Cover letter file: ${path}`),
+    "",
+    "## Submission handoff",
+    input.prefillCommand
+      ? [
+          "Run this to open and prefill the supported Greenhouse form, then review every field and submit yourself:",
+          "",
+          "```bash",
+          input.prefillCommand,
+          "```"
+        ].join("\n")
+      : "Open the employer form, upload the tailored CV, attach the cover letter if requested, verify each answer, then submit yourself.",
+    "",
+    "> Do not add claims, numbers, qualifications, or eligibility answers that are not in your verified profile."
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function quoteShellValue(value: string): string {
+  return `'${value.replaceAll("'", "'\\\"'\\\"'")}'`;
+}
+
 export type FollowUpOperationOptions = {
   storagePath?: string;
   referencePath?: string;
