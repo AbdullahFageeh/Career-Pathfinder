@@ -61,6 +61,7 @@ export async function enqueueSingleJobPipelineRun(
     initialApplicationNote: options.initialApplicationNote,
     renderOutputDir: options.renderOutputDir,
     applyMode: options.applyMode,
+    allowFullAutoSubmission: options.allowFullAutoSubmission,
     dataConsent: options.dataConsent,
     maxAttempts: options.maxAttempts
   });
@@ -215,6 +216,7 @@ function createStageOptions(
     applyOptions: payload.applyMode
       ? {
           mode: payload.applyMode,
+          allowFullAutoSubmission: payload.allowFullAutoSubmission,
           dataConsent: payload.dataConsent,
           greenhouseJobBoardApiKey: runOptions.greenhouseJobBoardApiKey,
           fetchImpl: runOptions.applyFetchImpl,
@@ -238,6 +240,7 @@ function normalizeQueuePayload(queueJob: QueueJob): SingleJobPipelineQueuePayloa
     initialApplicationNote: readOptionalString(payload.initialApplicationNote),
     renderOutputDir: readOptionalString(payload.renderOutputDir),
     applyMode: readAutomationMode(payload.applyMode),
+    allowFullAutoSubmission: readOptionalBoolean(payload.allowFullAutoSubmission),
     dataConsent: readGreenhouseDataConsent(payload.dataConsent)
   };
 }

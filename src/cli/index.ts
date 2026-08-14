@@ -19,6 +19,7 @@ import type { ApplicationDocumentFormat } from "../render/index.js";
 import type { CoverLetterTone } from "../letters/index.js";
 import { architectureSummary } from "../shared/modules.js";
 import type { AutomationMode } from "../shared/contracts.js";
+import { runDailyAutomationOperation } from "../automation/operations.js";
 import {
   enqueueSingleJobPipelineRun,
   runPipelineQueueOnce,
@@ -47,6 +48,7 @@ type CliDependencies = {
   runFollowUpOperation: typeof runFollowUpOperation;
   runReportOperation: typeof runReportOperation;
   runDiscoverOperation: typeof runDiscoverOperation;
+  runDailyAutomationOperation: typeof runDailyAutomationOperation;
 };
 
 type ParsedCliOptions = {
@@ -72,7 +74,8 @@ const DEFAULT_CLI_DEPENDENCIES: CliDependencies = {
   runCoverLetterOperation,
   runFollowUpOperation,
   runReportOperation,
-  runDiscoverOperation
+  runDiscoverOperation,
+  runDailyAutomationOperation
 };
 
 export async function runCli(
@@ -117,6 +120,8 @@ export async function runCli(
       return runReportCli(args, deps, io);
     case "discover:greenhouse":
       return runDiscoverCli(args, deps, io);
+    case "automation:run":
+      return runDailyAutomationCli(args, deps, io);
     default:
       io.stderr(`Unknown command "${command}".`);
       io.stderr("");
@@ -155,6 +160,7 @@ async function runSinglePipelineCli(
       applyOptions: applyMode
         ? {
             mode: applyMode,
+            ...(options.flags.has("allow-full-auto") ? { allowFullAutoSubmission: true } : {}),
             dataConsent
           }
         : undefined
@@ -207,6 +213,7 @@ async function runQueueSingleCli(
       profileId: readOptionalOption(options, "profile-id"),
       renderOutputDir: resolveOptionalPath(readOptionalOption(options, "render-output-dir")),
       applyMode,
+      ...(options.flags.has("allow-full-auto") ? { allowFullAutoSubmission: true } : {}),
       dataConsent
     };
     const queueJob = await deps.enqueueSingleJobPipelineRun(jobInput, enqueueOptions);
@@ -504,6 +511,43 @@ async function runReportCli(
   }
 }
 
+async function runDailyAutomationCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const result = await deps.runDailyAutomationOperation({
+      configPath: resolveOptionalPath(readOptionalOption(options, "config")),
+      storagePath: resolveOptionalPath(readOptionalOption(options, "storage-path")),
+      referencePath: resolveOptionalPath(readOptionalOption(options, "reference-path")),
+      profileId: readOptionalOption(options, "profile-id"),
+      outputPath: resolveOptionalPath(readOptionalOption(options, "output"))
+    });
+
+    io.stdout(
+      [
+        "Daily automation desk complete.",
+        `- run: ${result.run.run.id}`,
+        `- skipped: ${result.run.skipped ? "yes" : "no"}`,
+        `- boards queried: ${result.discovery.boardsQueried}`,
+        `- roles found: ${result.discovery.listings}`,
+        `- queued: ${result.run.queued.length}`,
+        `- review required: ${result.run.reviewRequired.length}`,
+        `- auto-submitted: ${result.run.run.counts.submitted}`,
+        result.outputPath ? `- review queue: ${result.outputPath}` : undefined
+      ]
+        .filter((line): line is string => typeof line === "string")
+        .join("\n")
+    );
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
 async function runDiscoverCli(
   args: string[],
   deps: CliDependencies,
@@ -735,7 +779,8 @@ function formatHelpText(): string {
     "- Set GREENHOUSE_JOB_BOARD_API_KEY in your environment for live Greenhouse submissions.",
     "- Set LLM_API_KEY (or OPENAI_API_KEY) to enable optional cover letter refinement; without it the deterministic draft is used.",
     "- For public hosted Greenhouse pages, use greenhouse:hosted:prefill to open a supervised browser-fill path without the API key.",
-    "- The first outbound adapter only submits in supervised mode; other modes fall back to review-needed.",
+    "- automation:run discovers configured trusted Greenhouse boards, queues only eligible high-fit roles, and writes a review queue.",
+    "- Full-auto structured submission remains disabled until autoSubmitEnabled is explicitly set in your private automation config.",
     "",
     "Implemented architecture modules:",
     ...architectureSummary.map((module) => `- ${module.key}: ${module.summary}`)
@@ -746,13 +791,14 @@ function formatUsageText(): string {
   return [
     "  node dist/index.js shortlist [--limit <n>] [--min-score <n>] [--corpus-dir <dir>] [--storage-path <path>] [--reference-path <path>] [--home-city <city>] [--output <file.md>] [--corpus-only] [--include-ineligible] [--saudi-national]",
     "  node dist/index.js discover:greenhouse [--boards <token,token>] [--max-per-board <n>] [--save-dir <dir>] [--storage-path <path>] [--all-titles] [--no-persist]",
+    "  node dist/index.js automation:run [--config <automation.config.json>] [--storage-path <path>] [--reference-path <path>] [--profile-id <id>] [--output <review.md>]",
     "  node dist/index.js cv --input <job.json> [--reference-path <path>] [--profile-id <id>] [--output-dir <dir>] [--formats html,pdf] [--browser-executable-path <path>]",
     "  node dist/index.js letter --input <job.json> [--tone direct|warm|formal] [--recipient <name>] [--company-hook <text>] [--output-dir <dir>] [--formats html,pdf] [--use-llm] [--llm-model <model>]",
     "  node dist/index.js followups [--storage-path <path>] [--offset-days 3,7,14] [--output <file.md>] [--no-schedule]",
     "  node dist/index.js report [--storage-path <path>] [--stale-after-days <n>] [--output <file.md>]",
     "  node dist/index.js worker:once [--storage-path <path>] [--worker-id <id>] [--max-jobs <n>]",
-    "  node dist/index.js queue:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode supervised] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
-    "  node dist/index.js pipeline:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode supervised] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
+    "  node dist/index.js queue:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode observe|supervised|full-auto] [--allow-full-auto] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
+    "  node dist/index.js pipeline:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode observe|supervised|full-auto] [--allow-full-auto] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
     "  node dist/index.js greenhouse:hosted:prefill --url <hosted-greenhouse-job-url> [--reference-path <path>] [--resume-path <path>] [--browser-executable-path <path>] [--profile-id <id>] [--headless] [--keep-open] [--timeout-ms <ms>]"
   ].join("\n");
 }

@@ -358,3 +358,40 @@ test("runPipelineQueueOnce optionally processes the apply stage after ATS scorin
     ["apply", "ingest", "render", "score-ats", "tailor"]
   );
 });
+
+
+test("enqueueSingleJobPipelineRun returns the active downstream stage instead of starting a duplicate run", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-queue-downstream-dedupe-"));
+  const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
+  const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  await writeFile(referencePath, profileReferenceFixture, "utf8");
+  await enqueueSingleJobPipelineRun(siteManagerJob, { storagePath, referencePath });
+  await runPipelineQueueOnce({ storagePath, workerId: "worker:ingest-only", maxJobs: 1 });
+
+  const active = await enqueueSingleJobPipelineRun(siteManagerJob, { storagePath, referencePath });
+
+  assert.equal(active.id, "queue:job-site-manager:run-1:tailor");
+  assert.equal(active.stage, "tailor");
+});
+
+test("enqueueSingleJobPipelineRun persists explicit full-auto authorization in the queue payload", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-queue-full-auto-"));
+  const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  const queueJob = await enqueueSingleJobPipelineRun(siteManagerJob, {
+    storagePath,
+    applyMode: "full-auto",
+    allowFullAutoSubmission: true
+  });
+
+  assert.equal(queueJob.payload?.allowFullAutoSubmission, true);
+});

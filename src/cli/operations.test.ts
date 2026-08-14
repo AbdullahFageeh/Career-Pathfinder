@@ -10,6 +10,7 @@ import type {
   ShortlistOperationResult
 } from "./operations.js";
 import { buildFunnelReport } from "../report/index.js";
+import type { DailyAutomationOperationResult } from "../automation/operations.js";
 import type { CandidateProfile } from "../shared/contracts.js";
 
 const profile: CandidateProfile = {
@@ -330,4 +331,59 @@ test("runCli help lists the new daily loop commands", async () => {
   assert.match(stdout[0] ?? "", /discover:greenhouse/);
   assert.match(stdout[0] ?? "", /followups/);
   assert.match(stdout[0] ?? "", /report/);
+});
+
+
+test("runCli automation:run forwards private paths and prints the daily queue summary", async () => {
+  const stdout: string[] = [];
+  let captured: Record<string, unknown> | undefined;
+  const result = {
+    discovery: {
+      boardsQueried: 2,
+      boardsFailed: 0,
+      listings: 5
+    },
+    run: {
+      skipped: false,
+      queued: [{ queueJob: { id: "queue:1" } }],
+      reviewRequired: [{ reason: "source-not-trusted" }],
+      run: {
+        id: "run:daily",
+        counts: { submitted: 0 }
+      }
+    },
+    outputPath: "/tmp/review.md"
+  } as unknown as DailyAutomationOperationResult;
+
+  const exitCode = await runCli(
+    [
+      "automation:run",
+      "--config",
+      "automation.config.json",
+      "--storage-path",
+      "data/automation.sqlite",
+      "--reference-path",
+      "APPLICATION_REFERENCE.md",
+      "--output",
+      "artifacts/review.md"
+    ],
+    {
+      runDailyAutomationOperation: async (options) => {
+        captured = options as unknown as Record<string, unknown>;
+        return result;
+      }
+    },
+    {
+      stdout: (message) => stdout.push(message)
+    }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.match(String(captured?.configPath), /automation\.config\.json$/);
+  assert.match(String(captured?.storagePath), /data\/automation\.sqlite$/);
+  assert.match(String(captured?.referencePath), /APPLICATION_REFERENCE\.md$/);
+  assert.match(String(captured?.outputPath), /artifacts\/review\.md$/);
+  assert.match(stdout[0] ?? "", /Daily automation desk complete/);
+  assert.match(stdout[0] ?? "", /roles found: 5/);
+  assert.match(stdout[0] ?? "", /queued: 1/);
 });

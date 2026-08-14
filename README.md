@@ -2,7 +2,7 @@
 
 A **Saudi-focused job-search operating system** for event production, venue operations, installation, site delivery, supplier coordination, and adjacent operational roles.
 
-It turns the job search into a small daily control loop: collect legitimate Saudi roles, rank them against verified experience, prepare tailored materials, track what has actually been applied to, and surface follow-ups before opportunities go cold. It is built for supervised use: it never silently submits applications and it keeps every generated claim tied to the candidate profile.
+It turns the job search into a controlled daily application desk: collect trusted Saudi roles, rank them against verified experience, queue tailored materials, track what has actually been applied to, and surface follow-ups before opportunities go cold. It is intentionally low-volume and evidence-bound: unknown questions, untrusted sources, stale roles, and unsupported portals are held for review rather than guessed.
 
 ## What it does
 
@@ -11,7 +11,8 @@ It turns the job search into a small daily control loop: collect legitimate Saud
 | Discovery | Queries curated public Greenhouse boards and accepts configurable employer board tokens. | Keeps only Saudi-based roles; retries temporary network failures; records board failures without stopping the run. |
 | Qualification | Ranks saved and discovered roles by title, delivery evidence, location, and recency. | Excludes non-Saudi roles and Saudi-national-only roles unless the candidate profile confirms eligibility. |
 | Materials | Produces a tailored CV in ATS-safe HTML/PDF and a cover letter in HTML, text, and optional PDF. | Uses only verified profile facts; optional AI editing is rejected if it adds unsupported claims. |
-| Control | Tracks applications, schedules day 3/7/14 follow-ups, and writes a funnel briefing. | No outbound application is sent by default; every action remains reviewable. |
+| Automation desk | Runs configured public-board discovery, applies source/fit/cap rules, persists a daily run record, and writes a review queue. | Default cap: 4/day; stale, duplicate, unsupported, and employer-cooldown roles stop for review. |
+| Control | Tracks applications, schedules day 3/7/14 follow-ups, and writes a funnel briefing. | Structured auto-send is disabled until a private config explicitly enables it; browser portals remain review-gated. |
 
 ## Start here — 10 minutes
 
@@ -25,7 +26,15 @@ cp APPLICATION_REFERENCE.example.md APPLICATION_REFERENCE.md
 
 For the Saudi-national eligibility filter, include the real answer under **Identity and contact** as `Nationality status: Saudi national` only if that is accurate. If this field is not confirmed, Saudi-national-only vacancies remain excluded rather than guessed.
 
-### 2. Install and check the project
+### 2. Create the private automation settings
+
+```bash
+cp automation.config.example.json automation.config.json
+```
+
+Keep `"autoSubmitEnabled": false` for the first live run. Add only official public Greenhouse board tokens you have verified. The file is ignored by Git.
+
+### 3. Install and check the project
 
 ```bash
 npm install
@@ -34,7 +43,7 @@ npm test
 
 A healthy installation finishes with all tests passing. The repository contains an initial local corpus in `data/roles/`; it is part of the tracked project history even though newly generated local data is ignored.
 
-### 3. Produce today’s shortlist
+### 4. Produce today’s shortlist
 
 ```bash
 npm run shortlist -- \
@@ -47,20 +56,36 @@ npm run shortlist -- \
 
 Open `artifacts/daily-shortlist.md`, then work the first two roles that you genuinely want. A shortlist is a backstage run sheet, not a to-do dump: the goal is a small number of high-quality applications, completed end to end.
 
+## Automated daily desk
+
+Run the automation command once after creating your private profile and config. It discovers only enabled official Greenhouse boards, rejects stale or duplicate roles, applies Saudi eligibility and fit rules, respects daily and employer caps, queues selected roles, and writes a compact review sheet.
+
+```bash
+npm run automation:run -- \
+  --config ./automation.config.json \
+  --reference-path ./APPLICATION_REFERENCE.md \
+  --storage-path ./data/pipeline-store.sqlite \
+  --output ./artifacts/automation-review.md
+```
+
+The first run should remain **queue-only** because `autoSubmitEnabled` is false. Read `artifacts/automation-review.md`, then process the queued work with:
+
+```bash
+npm run worker:once -- --storage-path ./data/pipeline-store.sqlite
+```
+
+A structured Greenhouse application can progress to API submission only when all of the following are true: the source is configured and official, the role passes source/fit/cap checks, every required question has a verified answer, required consent is present, `GREENHOUSE_JOB_BOARD_API_KEY` is available, and `autoSubmitEnabled` is explicitly true in the private config. Unsupported sites remain in the review queue.
+
 ## The daily loop
 
-Run this sequence on a workday. It is designed to take **30–45 minutes** once your profile is accurate.
+Run this sequence on a workday. It is designed to take **15–25 minutes** once your profile and configuration are accurate.
 
 | Order | Command | What to do next |
 | --- | --- | --- |
-| 1 | `npm run discover:greenhouse -- --save-dir ./data/roles` | Review any new Saudi roles; the command persists them to the local store by default. Add target companies with `--boards token1,token2`. |
-| 2 | `npm run shortlist -- --reference-path ./APPLICATION_REFERENCE.md --limit 10 --output ./artifacts/daily-shortlist.md` | Choose one or two roles worth real effort. Use `--saudi-national` only if true. |
-| 3 | `npm run pipeline:single -- --input ./data/roles/<role>.json --reference-path ./APPLICATION_REFERENCE.md --storage-path ./data/pipeline-store.sqlite --render-output-dir ./artifacts/resumes` | Create the tracked application record and check ATS readiness. Only proceed when the score and facts look right. |
-| 4 | `npm run cv -- --input ./data/roles/<role>.json --reference-path ./APPLICATION_REFERENCE.md --output-dir ./artifacts/cv --formats html,pdf` | Generate the recruiter-ready CV. Attach the PDF only after a quick factual review. |
-| 5 | `npm run letter -- --input ./data/roles/<role>.json --reference-path ./APPLICATION_REFERENCE.md --output-dir ./artifacts/letters --formats html,pdf` | Read it as if you were the hiring manager. Add a real employer-specific line with `--company-hook` if useful. |
-| 6 | Submit manually or use the supervised Greenhouse prefill command. | Review every field and press the final submit button yourself. |
-| 7 | `npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md` | Send only the messages that remain relevant after a quick human review. |
-| 8 | `npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md` | Use the report to identify stalled applications and decide the next week’s focus. |
+| 1 | `npm run automation:run -- --config ./automation.config.json --reference-path ./APPLICATION_REFERENCE.md --storage-path ./data/pipeline-store.sqlite --output ./artifacts/automation-review.md` | Review only the held items; trusted, high-fit roles are queued automatically. |
+| 2 | `npm run worker:once -- --storage-path ./data/pipeline-store.sqlite` | Generate tailored materials, assess ATS fit, and invoke only the permitted structured adapter path. |
+| 3 | `npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md` | Send only the messages that remain relevant after a quick human review. |
+| 4 | `npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md` | Use the report to identify stalled applications and decide the next week’s focus. |
 
 ## Core commands
 
@@ -182,7 +207,7 @@ src/
 
 `APPLICATION_REFERENCE.md`, generated `artifacts/`, runtime `data/`, SQLite files, `.env*`, browser state, and local session files are ignored. Do not place private CVs, phone numbers, employer contact exports, or credentials in a tracked file.
 
-> This project is an application-assistance tool, not an automatic mass-application bot. The strongest advantage is focused, factual, timely applications — not volume.
+> This project is a low-volume automation desk, not a mass-application bot. Its advantage is focused, factual, timely applications — not volume. A safe configuration limits application volume, uses only explicit verified answers, and sends unsupported or ambiguous cases to review.
 
 ## Quality checks
 
@@ -195,7 +220,7 @@ The test suite covers Saudi eligibility, source normalization and transient retr
 
 ## Current limits
 
-The Greenhouse discovery module cannot discover every Saudi vacancy, and public board APIs may be intermittently unavailable. Use employer career pages, referrals, LinkedIn, and job-board alerts alongside it. The project presently supports supervised Greenhouse browser prefill; other platforms should be reviewed and applied to manually until a reliable, policy-compliant adapter is added.
+The Greenhouse discovery module cannot discover every Saudi vacancy, and public board APIs may be intermittently unavailable. Use employer career pages, referrals, LinkedIn, and job-board alerts alongside it. The automated sender is deliberately restricted to configured Greenhouse API channels; company pages, LinkedIn, and other portals remain review-only until a reliable structured adapter exists.
 
 ## Licence
 

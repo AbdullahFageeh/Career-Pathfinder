@@ -28,3 +28,17 @@
 - No durable deployment or scheduler is configured yet.
 - No configured outbound Greenhouse credential is confirmed.
 - No general API submitter exists for Recruiterflow, Workday, LinkedIn, or other browser-only career portals.
+
+## 2026-08-14 — live queue-only retry and scheduling
+
+### Completed
+
+- Created a private ignored `automation.config.json` with `autoSubmitEnabled: false`, a four-role daily cap, one-employer cap, and configured Greenhouse boards for Dmgevents, Tamara, and Careem.
+- First live run confirmed the safe queue-only path but the target-title source prefilter returned zero roles. The daily operation now disables that source-side title prefilter so the existing fit engine assesses every Saudi listing from configured boards.
+- Fixed daily idempotency so its key fingerprints the effective configuration rather than only the schema version; same-day source or threshold edits now create a fresh run.
+- Expanded live retry: 19 Saudi roles discovered, 4 qualified, 1 role queued, 4 held for review, 0 submitted. The queued Tamara engineering role ran through the pipeline with auto-send disabled; it is not an approved application.
+- Created active weekday schedule: `Weekday Saudi job application desk`, 09:00 Asia/Riyadh, Monday–Friday. The schedule retains the queue-only / no-invention safeguards in its task detail.
+
+### Next
+
+- Run final full-suite validation, review the staged code, commit/push the feature branch, then verify the scheduled task status.

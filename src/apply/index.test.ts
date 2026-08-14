@@ -686,3 +686,45 @@ function jsonResponse(body: unknown, status = 200): Response {
     }
   });
 }
+
+
+test("full-auto Greenhouse preparation requires an explicit structured-channel opt-in", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-full-auto-"));
+  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const profile = createCandidateProfile(resumePath);
+  const record = createAtsReadyRecord(greenhouseJob);
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  await writeFile(resumePath, "resume-pdf-placeholder", "utf8");
+
+  const blocked = await prepareJobApplicationSubmission(greenhouseJob, record, profile, tailoredResume, {
+    mode: "full-auto",
+    greenhouseJobBoardApiKey: "test-key"
+  });
+
+  assert.equal(blocked.ready, false);
+  if (!blocked.ready) {
+    assert.match(blocked.reason, /explicit/i);
+  }
+
+  const allowed = await prepareJobApplicationSubmission(greenhouseJob, record, profile, tailoredResume, {
+    mode: "full-auto",
+    allowFullAutoSubmission: true,
+    greenhouseJobBoardApiKey: "test-key",
+    fetchImpl: async () =>
+      jsonResponse({
+        questions: [
+          {
+            label: "Resume/CV",
+            required: true,
+            fields: [{ name: "resume", type: "input_file" }]
+          }
+        ]
+      })
+  });
+
+  assert.equal(allowed.ready, true);
+});

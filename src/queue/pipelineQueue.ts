@@ -21,6 +21,7 @@ export type SingleJobPipelineQueuePayload = {
   initialApplicationNote?: string;
   renderOutputDir?: string;
   applyMode?: AutomationMode;
+  allowFullAutoSubmission?: boolean;
   dataConsent?: GreenhouseDataConsent;
 };
 
@@ -32,6 +33,7 @@ export type EnqueueSingleJobPipelineOptions = {
   initialApplicationNote?: string;
   renderOutputDir?: string;
   applyMode?: AutomationMode;
+  allowFullAutoSubmission?: boolean;
   dataConsent?: GreenhouseDataConsent;
   maxAttempts?: number;
 };
@@ -42,12 +44,12 @@ export async function enqueueSingleJobPipeline(
   options: EnqueueSingleJobPipelineOptions = {}
 ): Promise<QueueJob> {
   const existingQueueJobs = await storage.listQueueJobs();
-  const activeIngestQueueJob = findActiveQueueJob(existingQueueJobs, input.id, "ingest");
+  const activeQueueJob = findActiveQueueJob(existingQueueJobs, input.id);
 
-  if (activeIngestQueueJob) {
+  if (activeQueueJob) {
     return {
-      ...activeIngestQueueJob,
-      runNumber: readQueueJobRunNumber(activeIngestQueueJob)
+      ...activeQueueJob,
+      runNumber: readQueueJobRunNumber(activeQueueJob)
     };
   }
 
@@ -63,6 +65,7 @@ export async function enqueueSingleJobPipeline(
       initialApplicationNote: options.initialApplicationNote,
       renderOutputDir: options.renderOutputDir,
       applyMode: options.applyMode,
+      allowFullAutoSubmission: options.allowFullAutoSubmission,
       dataConsent: options.dataConsent
     },
     at: options.at,
@@ -225,18 +228,9 @@ function normalizeTimestamp(value: string | undefined): string {
   return Number.isNaN(parsed) ? new Date().toISOString() : new Date(parsed).toISOString();
 }
 
-function findActiveQueueJob(
-  queueJobs: QueueJob[],
-  jobId: string,
-  stage: (typeof PIPELINE_QUEUE_STAGES)[number]
-): QueueJob | undefined {
+function findActiveQueueJob(queueJobs: QueueJob[], jobId: string): QueueJob | undefined {
   return queueJobs
-    .filter(
-      (queueJob) =>
-        queueJob.jobId === jobId &&
-        queueJob.stage === stage &&
-        !isTerminalQueueState(queueJob.state)
-    )
+    .filter((queueJob) => queueJob.jobId === jobId && !isTerminalQueueState(queueJob.state))
     .sort(
       (left, right) =>
         readQueueJobRunNumber(right) - readQueueJobRunNumber(left) ||

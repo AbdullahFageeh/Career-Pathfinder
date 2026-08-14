@@ -91,6 +91,8 @@ export type GreenhouseDataConsent = {
 
 export type ApplySubmissionOptions = {
   mode?: AutomationMode;
+  /** Must be true before a configured structured adapter can use full-auto mode. */
+  allowFullAutoSubmission?: boolean;
   greenhouseJobBoardApiKey?: string;
   dataConsent?: GreenhouseDataConsent;
   fetchImpl?: typeof fetch;
@@ -148,13 +150,16 @@ export async function prepareJobApplicationSubmission(
     );
   }
 
-  if (mode !== "supervised") {
+  const isAllowedFullAuto = mode === "full-auto" && options.allowFullAutoSubmission === true;
+  if (mode !== "supervised" && !isAllowedFullAuto) {
     return createReviewPreparation(
       applicationRecord,
       mode,
       attemptedAt,
       job.applicationTarget?.url ?? job.source.url ?? "unknown",
-      "The first outbound adapter only submits in supervised mode."
+      mode === "full-auto"
+        ? "Full-auto submission requires explicit structured-channel authorization."
+        : "The first outbound adapter only submits in supervised mode."
     );
   }
 

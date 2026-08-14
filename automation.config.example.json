@@ -2,6 +2,7 @@
   "version": 1,
   "timeZone": "Asia/Riyadh",
   "automationMode": "full-auto",
+  "autoSubmitEnabled": false,
   "caps": {
     "dailyApplications": 4,
     "maxApplicationsPerEmployer": 1,

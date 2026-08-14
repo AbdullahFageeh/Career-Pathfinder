@@ -11,6 +11,7 @@
     "start": "node dist/index.js",
     "greenhouse:hosted:prefill": "npm run build && node dist/index.js greenhouse:hosted:prefill",
     "discover:greenhouse": "npm run build && node dist/index.js discover:greenhouse",
+    "automation:run": "npm run build && node dist/index.js automation:run",
     "shortlist": "npm run build && node dist/index.js shortlist",
     "cv": "npm run build && node dist/index.js cv",
     "letter": "npm run build && node dist/index.js letter",

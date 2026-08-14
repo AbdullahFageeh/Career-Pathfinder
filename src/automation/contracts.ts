@@ -55,6 +55,8 @@ export type AutomationDeskConfig = {
   version: 1;
   timeZone: string;
   automationMode: AutomationMode;
+  /** Disabled by default; enables only configured structured-channel full-auto submissions. */
+  autoSubmitEnabled: boolean;
   caps: ApplicationCapConfig;
   thresholds: AutomationThresholdConfig;
   sources: AutomationSourceConfig[];
@@ -94,6 +96,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
 
   const timeZone = requireString(value.timeZone, "timeZone");
   const automationMode = requireAutomationMode(value.automationMode);
+  const autoSubmitEnabled = readBooleanWithDefault(value.autoSubmitEnabled, "autoSubmitEnabled", false);
   const parsedCaps: ApplicationCapConfig = {
     dailyApplications: requireIntegerInRange(caps.dailyApplications, "dailyApplications", 0, MAX_DAILY_APPLICATION_CAP),
     maxApplicationsPerEmployer: requireIntegerInRange(caps.maxApplicationsPerEmployer, "maxApplicationsPerEmployer", 0, MAX_DAILY_APPLICATION_CAP),
@@ -108,6 +111,10 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
     minFitScore: requireIntegerInRange(thresholds.minFitScore, "minFitScore", 0, 100),
     minAtsScore: requireIntegerInRange(thresholds.minAtsScore, "minAtsScore", 0, 100)
   };
+
+  if (autoSubmitEnabled && automationMode !== "full-auto") {
+    throw new Error("autoSubmitEnabled requires automationMode to be full-auto.");
+  }
 
   if (parsedCaps.maxApplicationsPerEmployer > parsedCaps.dailyApplications) {
     throw new Error("maxApplicationsPerEmployer cannot exceed dailyApplications.");
@@ -126,6 +133,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
     version: 1,
     timeZone,
     automationMode,
+    autoSubmitEnabled,
     caps: parsedCaps,
     thresholds: parsedThresholds,
     sources,
@@ -221,6 +229,13 @@ function requireIdentifier(value: unknown, label: string): string {
     throw new Error(`${label} must contain only letters, numbers, underscores, and hyphens.`);
   }
   return identifier;
+}
+
+function readBooleanWithDefault(value: unknown, label: string, defaultValue: boolean): boolean {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  return requireBoolean(value, label);
 }
 
 function requireBoolean(value: unknown, label: string): boolean {
