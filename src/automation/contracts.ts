@@ -56,6 +56,8 @@ export type AutomationDeskConfig = {
   version: 1;
   timeZone: string;
   automationMode: AutomationMode;
+  /** Standard preserves existing role evidence scoring; psychometric-first prioritizes report-aligned work design. */
+  selectionProfile?: "standard" | "psychometric-first";
   /** Disabled by default; enables only configured structured-channel full-auto submissions. */
   autoSubmitEnabled: boolean;
   caps: ApplicationCapConfig;
@@ -97,6 +99,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
 
   const timeZone = requireString(value.timeZone, "timeZone");
   const automationMode = requireAutomationMode(value.automationMode);
+  const selectionProfile = readSelectionProfile(value.selectionProfile);
   const autoSubmitEnabled = readBooleanWithDefault(value.autoSubmitEnabled, "autoSubmitEnabled", false);
   const parsedCaps: ApplicationCapConfig = {
     dailyApplications: requireIntegerInRange(caps.dailyApplications, "dailyApplications", 0, MAX_DAILY_APPLICATION_CAP),
@@ -134,6 +137,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
     version: 1,
     timeZone,
     automationMode,
+    selectionProfile,
     autoSubmitEnabled,
     caps: parsedCaps,
     thresholds: parsedThresholds,
@@ -233,6 +237,13 @@ function requireString(value: unknown, label: string): string {
 
 function requireAutomationMode(value: unknown): AutomationMode {
   return requireEnum(value, "automationMode", ["observe", "supervised", "full-auto"] as const);
+}
+
+function readSelectionProfile(value: unknown): AutomationDeskConfig["selectionProfile"] {
+  if (value === undefined) {
+    return "standard";
+  }
+  return requireEnum(value, "selectionProfile", ["standard", "psychometric-first"] as const);
 }
 
 function requireIdentifier(value: unknown, label: string): string {

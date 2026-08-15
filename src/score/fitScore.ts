@@ -6,6 +6,12 @@ import {
   type JobEligibilityOptions
 } from "../policy/eligibility.js";
 import { lane1ExactJobTitles } from "../policy/targetTitles.js";
+import {
+  assessCareerDomainAlignment,
+  assessIkigaiAlignment,
+  assessPsychometricAlignment,
+  assessVerifiedSpecialtyAlignment
+} from "./psychometricFit.js";
 
 export type FitDimensionKey =
   | "title-family"
@@ -33,6 +39,13 @@ export type JobFitScore = {
   reasons: string[];
   eligibility: JobEligibilityAssessment;
   scoredAt: string;
+  /** Standard preserves the original career-evidence model; psychometric-first makes workstyle alignment primary. */
+  selectionProfile?: "standard" | "psychometric-first";
+  psychometricScore?: number;
+  ikigaiScore?: number;
+  careerDomainScore?: number;
+  careerDomainCompatible?: boolean;
+  verifiedSpecialtyCompatible?: boolean;
 };
 
 export type RankedJobOpportunity = {
@@ -50,6 +63,8 @@ export type FitScoringOptions = JobEligibilityOptions & {
   now?: string;
   /** Extra title terms treated as direct-fit beyond the Lane 1 shortlist. */
   additionalTargetTitles?: readonly string[];
+  /** Makes psychometric alignment primary and Ikigai alignment secondary, using only explicit posting text. */
+  selectionProfile?: "standard" | "psychometric-first";
 };
 
 const TITLE_FAMILY_MAX = 30;
@@ -166,9 +181,34 @@ export function scoreJobFit(
 
   const dimensions = [titleFamily, evidenceOverlap, seniority, location, applicationChannel, freshness];
   const rawScore = dimensions.reduce((total, dimension) => total + dimension.score, 0);
-  const score = eligibility.eligible ? rawScore : Math.min(rawScore, 20);
+  const selectionProfile = options.selectionProfile ?? "standard";
+  const psychometric = selectionProfile === "psychometric-first" ? assessPsychometricAlignment(job) : undefined;
+  const ikigai = selectionProfile === "psychometric-first" ? assessIkigaiAlignment(job) : undefined;
+  const careerDomain = selectionProfile === "psychometric-first" ? assessCareerDomainAlignment(job) : undefined;
+  const verifiedSpecialty =
+    selectionProfile === "psychometric-first" ? assessVerifiedSpecialtyAlignment(profile, job) : undefined;
+  const weightedScore =
+    psychometric && ikigai
+      ? Math.round(rawScore * 0.35 + psychometric.score * 0.55 + ikigai.score * 0.1)
+      : rawScore;
+  const domainCappedScore = careerDomain && !careerDomain.compatible ? Math.min(weightedScore, 34) : weightedScore;
+  const specialtyCappedScore = verifiedSpecialty && !verifiedSpecialty.compatible ? Math.min(domainCappedScore, 34) : domainCappedScore;
+  const score = eligibility.eligible ? specialtyCappedScore : Math.min(specialtyCappedScore, 20);
 
   const reasons = buildReasons(dimensions, eligibility);
+  if (psychometric && ikigai && careerDomain && verifiedSpecialty) {
+    reasons.unshift(
+      `Psychometric alignment ${psychometric.score}/100 (${psychometric.band}) based on explicit posting signals.`,
+      `Ikigai secondary alignment ${ikigai.score}/100 based on explicit posting signals.`
+    );
+    if (!careerDomain.compatible) {
+      const domainReason = careerDomain.blockers[0] ?? "Posting text does not show an explicit target career-domain signal.";
+      reasons.unshift(`Career-domain hold: ${domainReason}`);
+    }
+    if (!verifiedSpecialty.compatible) {
+      reasons.unshift(`Verified-specialty hold: ${verifiedSpecialty.blockers[0]}`);
+    }
+  }
 
   return {
     jobId: job.id,
@@ -179,7 +219,13 @@ export function scoreJobFit(
     matchedEvidenceTerms: extractNoteTerms(evidenceOverlap),
     reasons,
     eligibility,
-    scoredAt
+    scoredAt,
+    selectionProfile,
+    psychometricScore: psychometric?.score,
+    ikigaiScore: ikigai?.score,
+    careerDomainScore: careerDomain?.score,
+    careerDomainCompatible: careerDomain?.compatible,
+    verifiedSpecialtyCompatible: verifiedSpecialty?.compatible
   };
 }
 

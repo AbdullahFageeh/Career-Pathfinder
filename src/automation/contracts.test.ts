@@ -138,3 +138,21 @@ test("allows a paused automation desk with zero daily and employer application c
   assert.equal(config.caps.dailyApplications, 0);
   assert.equal(config.caps.maxApplicationsPerEmployer, 0);
 });
+
+test("accepts a psychometric-first selection profile and defaults older configs to standard", () => {
+  const psychometricFirst = validateAutomationDeskConfig({
+    ...validConfig,
+    selectionProfile: "psychometric-first"
+  });
+  const defaulted = validateAutomationDeskConfig(validConfig);
+
+  assert.equal(psychometricFirst.selectionProfile, "psychometric-first");
+  assert.equal(defaulted.selectionProfile, "standard");
+});
+
+test("rejects an unknown selection profile", () => {
+  assert.throws(
+    () => validateAutomationDeskConfig({ ...validConfig, selectionProfile: "invented-profile" }),
+    /selectionProfile/i
+  );
+});

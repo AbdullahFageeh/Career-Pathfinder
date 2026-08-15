@@ -13,6 +13,8 @@ import {
   getAutomationRunByIdempotencyKey
 } from "./runStore.js";
 
+const SCORING_POLICY_VERSION = "7";
+
 export type DailyAutomationDeskOptions = {
   storage: PipelineStorage;
   config: AutomationDeskConfig;
@@ -81,7 +83,8 @@ export async function runDailyAutomationDesk(
         minimumScore: options.config.thresholds.minFitScore,
         candidate: {
           isSaudiNational: isSaudiNational(options.config)
-        }
+        },
+        selectionProfile: options.config.selectionProfile ?? "standard"
       }
     );
 
@@ -144,7 +147,7 @@ function createDailyIdempotencyKey(timestamp: string, config: AutomationDeskConf
     .update(stableJson(config))
     .digest("hex")
     .slice(0, 12);
-  return `daily:${date}:config:${config.version}:${fingerprint}`;
+  return `daily:${date}:config:${config.version}:scoring:${SCORING_POLICY_VERSION}:${fingerprint}`;
 }
 
 function stableJson(value: unknown): string {
