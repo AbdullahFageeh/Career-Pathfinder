@@ -199,3 +199,19 @@ test("holds an entertainment-operations role when maintenance competency systems
   assert.equal(fit.band, "skip");
   assert.ok(fit.reasons.some((reason) => reason.includes("maintenance-competency")));
 });
+
+test("holds a hospitality role when the required food-and-beverage background is not evidenced", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "Senior Operation Specialist",
+      description:
+        "Lead daily dining-hall operations. Requires 6–8 years in hospitality or food and beverage operations, including high-volume restaurants or food halls."
+    }),
+    { now: "2026-08-15T00:00:00.000Z", selectionProfile: "psychometric-first" }
+  );
+
+  assert.equal(fit.verifiedSpecialtyCompatible, false);
+  assert.equal(fit.band, "skip");
+  assert.ok(fit.reasons.some((reason) => reason.includes("hospitality and food-and-beverage")));
+});
