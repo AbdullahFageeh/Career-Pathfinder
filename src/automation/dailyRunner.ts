@@ -13,7 +13,7 @@ import {
   getAutomationRunByIdempotencyKey
 } from "./runStore.js";
 
-const SCORING_POLICY_VERSION = "15";
+const SCORING_POLICY_VERSION = "16";
 
 export type DailyAutomationDeskOptions = {
   storage: PipelineStorage;

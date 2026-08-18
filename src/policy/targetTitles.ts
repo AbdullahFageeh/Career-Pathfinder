@@ -1,5 +1,10 @@
 export type TargetTitleGroup = {
-  family: "installation-build" | "site-venue-operations" | "production-delivery";
+  family:
+    | "installation-build"
+    | "site-venue-operations"
+    | "production-delivery"
+    | "operations-programme-delivery"
+    | "client-service-delivery";
   titles: readonly string[];
 };
 
@@ -37,6 +42,34 @@ export const lane1TargetTitleGroups: readonly TargetTitleGroup[] = [
       "Event Production Manager",
       "Live Event Production Manager",
       "Exhibition Production Manager"
+    ]
+  },
+  {
+    family: "operations-programme-delivery",
+    titles: [
+      "Operations Manager",
+      "Operations Coordinator",
+      "Operations Specialist",
+      "Programme Manager",
+      "Program Manager",
+      "Project Manager",
+      "Project Coordinator",
+      "Implementation Manager",
+      "Implementation Specialist",
+      "Service Delivery Manager",
+      "Vendor Manager",
+      "Supplier Manager",
+      "Logistics Manager"
+    ]
+  },
+  {
+    family: "client-service-delivery",
+    titles: [
+      "Client Delivery Manager",
+      "Client Operations Manager",
+      "Account Manager",
+      "Client Services Manager",
+      "Client Service Manager"
     ]
   }
 ] as const;
