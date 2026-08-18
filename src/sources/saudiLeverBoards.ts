@@ -6,6 +6,8 @@ const LEVER_POSTINGS_API = "https://api.lever.co/v0/postings";
 
 export type SaudiLeverDiscoveryOptions = {
   siteTokens: readonly string[];
+  /** Include explicitly marked remote roles in addition to Saudi roles. Defaults to false. */
+  includeRemote?: boolean;
   filterByTargetTitles?: boolean;
   maxListingsPerSite?: number;
   fetchImpl?: typeof fetch;
@@ -57,7 +59,7 @@ export async function discoverSaudiLeverRoles(
         if (!normalized) {
           continue;
         }
-        if (!looksSaudi(normalized.location ?? "")) {
+        if (!acceptsLocation(normalized.location ?? "", options.includeRemote === true)) {
           continue;
         }
         if (options.filterByTargetTitles !== false && !matchesTargetTitle(normalized.title)) {
@@ -117,7 +119,8 @@ export function normalizeLeverPosting(
     tags: [
       "official-source",
       "source:lever",
-      "saudi-arabia",
+      ...(looksSaudi(location) || country === "SA" ? ["saudi-arabia"] : []),
+      ...(looksRemote(location) ? ["remote"] : []),
       `site:${siteToken}`,
       ...(cityTag ? [cityTag.replace(/\s+/g, "-")] : [])
     ],
@@ -148,9 +151,17 @@ async function fetchLeverSite(siteToken: string, fetchImpl: typeof fetch): Promi
   return [];
 }
 
+function acceptsLocation(location: string, includeRemote: boolean): boolean {
+  return looksSaudi(location) || (includeRemote && looksRemote(location));
+}
+
 function looksSaudi(location: string): boolean {
   const normalized = location.toLowerCase();
   return SAUDI_LOCATION_TERMS.some((term) => normalized.includes(term)) || /\bsa\b/.test(normalized);
+}
+
+function looksRemote(location: string): boolean {
+  return /\bremote\b|work from home|telecommute/i.test(location);
 }
 
 function matchesTargetTitle(title: string): boolean {

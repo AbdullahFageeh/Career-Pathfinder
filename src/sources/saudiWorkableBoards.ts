@@ -6,6 +6,8 @@ const WORKABLE_WIDGET_API = "https://apply.workable.com/api/v1/widget/accounts";
 
 export type SaudiWorkableDiscoveryOptions = {
   siteTokens: readonly string[];
+  /** Include explicitly marked remote roles in addition to Saudi roles. Defaults to false. */
+  includeRemote?: boolean;
   filterByTargetTitles?: boolean;
   maxListingsPerSite?: number;
   fetchImpl?: typeof fetch;
@@ -68,7 +70,7 @@ export async function discoverSaudiWorkableRoles(
       let accepted = 0;
       for (const job of payload.jobs ?? []) {
         const normalized = normalizeWorkableJob(siteToken, payload, job, fetchedAt);
-        if (!normalized || !looksSaudi(normalized.location ?? "")) {
+        if (!normalized || !acceptsLocation(normalized.location ?? "", options.includeRemote === true)) {
           continue;
         }
         if (options.filterByTargetTitles !== false && !matchesTargetTitle(normalized.title)) {
@@ -129,7 +131,8 @@ export function normalizeWorkableJob(
     tags: [
       "official-source",
       "source:workable",
-      "saudi-arabia",
+      ...(looksSaudi(location) ? ["saudi-arabia"] : []),
+      ...(looksRemote(location) ? ["remote"] : []),
       `site:${siteToken}`,
       ...(cityTag ? [cityTag.replace(/\s+/g, "-")] : [])
     ],
@@ -161,7 +164,10 @@ function resolveLocation(job: WorkableJob): string {
   const locations = [job.location, ...(job.locations ?? [])].filter(
     (location): location is WorkableLocation => Boolean(location)
   );
-  const labels = locations.map(formatLocation).filter(Boolean);
+  const labels = locations.map(formatLocation).filter((label): label is string => Boolean(label));
+  if (locations.some((location) => location.telecommuting === true) && !labels.some((label) => looksRemote(label))) {
+    labels.push("Remote");
+  }
   return Array.from(new Set(labels)).join(" / ");
 }
 
@@ -173,9 +179,17 @@ function formatLocation(location: WorkableLocation): string | undefined {
   return [line(location.city), line(location.country_name) ?? line(location.country)].filter(Boolean).join(", ") || undefined;
 }
 
+function acceptsLocation(location: string, includeRemote: boolean): boolean {
+  return looksSaudi(location) || (includeRemote && looksRemote(location));
+}
+
 function looksSaudi(location: string): boolean {
   const normalized = location.toLowerCase();
   return SAUDI_LOCATION_TERMS.some((term) => normalized.includes(term)) || /\bsa\b/.test(normalized);
+}
+
+function looksRemote(location: string): boolean {
+  return /\bremote\b|work from home|telecommute/i.test(location);
 }
 
 function matchesTargetTitle(title: string): boolean {

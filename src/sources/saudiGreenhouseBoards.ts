@@ -25,6 +25,8 @@ export const DEFAULT_SAUDI_BOARD_TOKENS: readonly string[] = ["dmgevents", "tama
 
 export type SaudiBoardDiscoveryOptions = {
   boardTokens?: readonly string[];
+  /** Include explicitly marked remote roles in addition to Saudi roles. Defaults to false. */
+  includeRemote?: boolean;
   /** Extra title terms treated as target roles beyond the Lane 1 shortlist. */
   targetTitleTerms?: readonly string[];
   /** When false, keeps every Saudi role regardless of title. Defaults to true. */
@@ -123,7 +125,7 @@ export async function discoverSaudiGreenhouseRoles(
 
     for (const job of board.jobs) {
       const location = readJobLocation(job);
-      if (!looksSaudi(location)) {
+      if (!acceptsLocation(location, job.content ?? "", options.includeRemote === true)) {
         continue;
       }
       if (options.filterByTargetTitles !== false && !matchesTargetTitle(job.title ?? "", options.targetTitleTerms)) {
@@ -168,9 +170,11 @@ export function normalizeBoardJob(
   const applyUrl = normalizeText(job.absolute_url) || undefined;
   const city = detectSaudiCity(location);
 
+  const remote = looksRemote(`${location} ${job.content ?? ""}`);
   const tags = [
     "official-source",
-    "saudi-arabia",
+    ...(looksSaudi(location) ? ["saudi-arabia"] : []),
+    ...(remote ? ["remote"] : []),
     "source:greenhouse-board",
     `board:${boardToken}`,
     ...(city ? [city.replace(/\s+/g, "-")] : [])
@@ -278,6 +282,10 @@ function readJobLocation(job: GreenhouseBoardJob): string {
   return "";
 }
 
+function acceptsLocation(location: string, content: string, includeRemote: boolean): boolean {
+  return looksSaudi(location) || (includeRemote && looksRemote(`${location} ${content}`));
+}
+
 function looksSaudi(location: string): boolean {
   const normalized = location.toLowerCase();
   if (normalized.length === 0) {
@@ -287,6 +295,10 @@ function looksSaudi(location: string): boolean {
     SAUDI_LOCATION_TERMS.some((term) => normalized.includes(term)) ||
     SAUDI_CITY_TERMS.some((term) => normalized.includes(term))
   );
+}
+
+function looksRemote(text: string): boolean {
+  return /\bremote\b|work from home|telecommute/i.test(text);
 }
 
 function detectSaudiCity(location: string): string | undefined {

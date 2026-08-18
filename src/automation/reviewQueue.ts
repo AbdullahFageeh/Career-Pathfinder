@@ -41,7 +41,7 @@ export function formatAutomationReviewQueueMarkdown(input: AutomationReviewQueue
   } else {
     for (const entry of input.queued) {
       lines.push(
-        `| ${escapeCell(entry.job.title)} | ${escapeCell(entry.job.company)} | ${escapeCell(entry.job.location ?? "Saudi Arabia")} | ${entry.fitScore}/100 | ${escapeCell(entry.queueJobId)} | Prepare tailored material and apply only if the adapter passes. |`
+        `| ${escapeCell(entry.job.title)} | ${escapeCell(entry.job.company)} | ${escapeCell(entry.job.location ?? "Unspecified")} | ${entry.fitScore}/100 | ${escapeCell(entry.queueJobId)} | Prepare tailored material and apply only if the adapter passes. |`
       );
     }
   }

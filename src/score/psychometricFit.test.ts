@@ -215,3 +215,21 @@ test("holds a hospitality role when the required food-and-beverage background is
   assert.equal(fit.band, "skip");
   assert.ok(fit.reasons.some((reason) => reason.includes("hospitality and food-and-beverage")));
 });
+
+
+test("holds a GTM strategy role without verified GTM, demand-generation, or revenue-operations evidence", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "GTM Strategy Principal",
+      location: "Remote-EMEA",
+      description:
+        "Own go-to-market strategy and operations, demand generation, top-of-funnel execution, Sales, Partnerships, and RevOps initiatives."
+    }),
+    { now: "2026-08-18T00:00:00.000Z", selectionProfile: "psychometric-first", allowRemote: true }
+  );
+
+  assert.equal(fit.verifiedSpecialtyCompatible, false);
+  assert.equal(fit.band, "skip");
+  assert.ok(fit.reasons.some((reason) => reason.includes("go-to-market")));
+});

@@ -94,6 +94,7 @@ export async function runDailyAutomationOperation(
     greenhouseTokens.length > 0
       ? deps.discoverSaudiGreenhouseRoles({
           boardTokens: greenhouseTokens,
+          includeRemote: config.includeRemote,
           filterByTargetTitles: false,
           now: options.now
         })
@@ -101,6 +102,7 @@ export async function runDailyAutomationOperation(
     leverTokens.length > 0
       ? deps.discoverSaudiLeverRoles({
           siteTokens: leverTokens,
+          includeRemote: config.includeRemote,
           filterByTargetTitles: false,
           now: options.now
         })
@@ -108,6 +110,7 @@ export async function runDailyAutomationOperation(
     workableTokens.length > 0
       ? deps.discoverSaudiWorkableRoles({
           siteTokens: workableTokens,
+          includeRemote: config.includeRemote,
           filterByTargetTitles: false,
           now: options.now
         })

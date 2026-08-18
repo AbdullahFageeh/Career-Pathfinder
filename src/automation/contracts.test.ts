@@ -156,3 +156,12 @@ test("rejects an unknown selection profile", () => {
     /selectionProfile/i
   );
 });
+
+
+test("accepts explicit remote discovery and defaults older configs to Saudi-only discovery", () => {
+  const remoteEnabled = validateAutomationDeskConfig({ ...validConfig, includeRemote: true });
+  const defaulted = validateAutomationDeskConfig(validConfig);
+
+  assert.equal(remoteEnabled.includeRemote, true);
+  assert.equal(defaulted.includeRemote, false);
+});

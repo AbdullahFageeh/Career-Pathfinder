@@ -58,6 +58,8 @@ export type AutomationDeskConfig = {
   automationMode: AutomationMode;
   /** Standard preserves existing role evidence scoring; psychometric-first prioritizes report-aligned work design. */
   selectionProfile?: "standard" | "psychometric-first";
+  /** When enabled, explicitly configured official sources may also return remote roles. Defaults to false. */
+  includeRemote: boolean;
   /** Disabled by default; enables only configured structured-channel full-auto submissions. */
   autoSubmitEnabled: boolean;
   caps: ApplicationCapConfig;
@@ -100,6 +102,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
   const timeZone = requireString(value.timeZone, "timeZone");
   const automationMode = requireAutomationMode(value.automationMode);
   const selectionProfile = readSelectionProfile(value.selectionProfile);
+  const includeRemote = readBooleanWithDefault(value.includeRemote, "includeRemote", false);
   const autoSubmitEnabled = readBooleanWithDefault(value.autoSubmitEnabled, "autoSubmitEnabled", false);
   const parsedCaps: ApplicationCapConfig = {
     dailyApplications: requireIntegerInRange(caps.dailyApplications, "dailyApplications", 0, MAX_DAILY_APPLICATION_CAP),
@@ -138,6 +141,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
     timeZone,
     automationMode,
     selectionProfile,
+    includeRemote,
     autoSubmitEnabled,
     caps: parsedCaps,
     thresholds: parsedThresholds,

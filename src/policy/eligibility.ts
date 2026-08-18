@@ -2,6 +2,7 @@ import type { JobPosting } from "../shared/contracts.js";
 
 export type EligibilityBlockerKind =
   | "outside-target-country"
+  | "remote-jurisdiction-restricted"
   | "nationality-restricted"
   | "low-legitimacy-signal"
   | "blocked-company"
@@ -42,6 +43,8 @@ export type CandidateEligibilityContext = {
 
 export type JobEligibilityOptions = {
   candidate?: CandidateEligibilityContext;
+  /** Remote roles are rejected unless this opt-in is explicitly enabled. */
+  allowRemote?: boolean;
   blockedCompanies?: readonly string[];
   requireApplicationChannel?: boolean;
   now?: string;
@@ -172,7 +175,8 @@ export function assessJobEligibility(
   const locationText = (job.location ?? "").toLowerCase();
 
   const resolvedCity = resolveSaudiCity(locationText, normalizedTags);
-  const remoteFriendly = containsAny(locationText, REMOTE_TERMS) || containsAny(haystack, REMOTE_TERMS);
+  const remoteFriendly = containsAny(locationText, REMOTE_TERMS) || normalizedTags.includes("remote");
+  const remoteJurisdictionCompatible = isRemoteJurisdictionCompatible(locationText);
   const locationLooksSaudi =
     Boolean(resolvedCity) ||
     containsAny(locationText, SAUDI_LOCATION_TERMS) ||
@@ -186,12 +190,19 @@ export function assessJobEligibility(
   const blockers: EligibilityBlocker[] = [];
   const warnings: EligibilityWarning[] = [];
 
-  if (!locationLooksSaudi) {
+  if (!locationLooksSaudi && !(options.allowRemote === true && remoteFriendly)) {
     blockers.push({
       kind: "outside-target-country",
       message: job.location
-        ? `Location "${job.location}" could not be resolved to Saudi Arabia.`
-        : "Posting has no location and could not be resolved to Saudi Arabia."
+        ? `Location "${job.location}" could not be resolved to Saudi Arabia or an enabled remote role.`
+        : "Posting has no location and could not be resolved to Saudi Arabia or an enabled remote role."
+    });
+  }
+
+  if (!locationLooksSaudi && options.allowRemote === true && remoteFriendly && !remoteJurisdictionCompatible) {
+    blockers.push({
+      kind: "remote-jurisdiction-restricted",
+      message: `Remote location "${job.location ?? "unspecified"}" is limited to a region or country that is not verified as compatible with work from Saudi Arabia.`
     });
   }
 
@@ -293,6 +304,15 @@ export function partitionEligibleJobs(
     excluded,
     assessments
   };
+}
+
+export function isRemoteJurisdictionCompatible(locationText: string): boolean {
+  const normalized = locationText.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!containsAny(normalized, REMOTE_TERMS)) {
+    return false;
+  }
+  return /^(remote|worldwide|global|anywhere)$/.test(normalized) ||
+    /^remote\s*[-,]?\s*(worldwide|global|anywhere|international|emea|middle east)$/.test(normalized);
 }
 
 export function resolveSaudiCity(

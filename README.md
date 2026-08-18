@@ -1,15 +1,15 @@
 # Saudi Job Search Operator
 
-A **Saudi-focused job-search operating system** for event production, venue operations, installation, site delivery, supplier coordination, and adjacent operational roles.
+A **Saudi-first and remote-inclusive job-search operating system** for event production, venue operations, installation, site delivery, supplier coordination, and adjacent operational roles.
 
-It turns the job search into a controlled daily application desk: collect trusted Saudi roles, rank them against verified experience, queue tailored materials, track what has actually been applied to, and surface follow-ups before opportunities go cold. It is intentionally low-volume and evidence-bound: unknown questions, untrusted sources, stale roles, and unsupported portals are held for review rather than guessed.
+It turns the job search into a controlled daily application desk: collect trusted Saudi roles and explicitly enabled remote roles, rank them against verified experience, queue tailored materials, track what has actually been applied to, and surface follow-ups before opportunities go cold. It is intentionally low-volume and evidence-bound: unknown questions, untrusted sources, stale roles, country-restricted remote listings, and unsupported portals are held for review rather than guessed.
 
 ## What it does
 
 | Stage | Outcome | Safeguard |
 | --- | --- | --- |
-| Discovery | Queries configured public Greenhouse, Lever, and Workable employer career sources. | Keeps only Saudi-based roles; retries transient failures; records source failures without stopping the run. |
-| Qualification | Ranks saved and discovered roles by title, delivery evidence, location, and recency. | Excludes non-Saudi roles and Saudi-national-only roles unless the candidate profile confirms eligibility. |
+| Discovery | Queries configured public Greenhouse, Lever, and Workable employer career sources. | Keeps Saudi roles by default; remote roles require an explicit config opt-in, trusted public source, and a compatible stated jurisdiction. |
+| Qualification | Ranks saved and discovered roles by title, delivery evidence, location, and recency. | Excludes country-restricted remote roles, Saudi-national-only roles without confirmed eligibility, and roles requiring unverified specialties. |
 | Materials | Produces a tailored CV in ATS-safe HTML/PDF and a cover letter in HTML, text, and optional PDF. | Uses only verified profile facts; optional AI editing is rejected if it adds unsupported claims. |
 | Automation desk | Runs configured public-board discovery, applies source/fit/cap rules, persists a daily run record, and writes a review queue. | Default cap: 4/day; stale, duplicate, unsupported, and employer-cooldown roles stop for review. |
 | Control | Tracks applications, schedules day 3/7/14 follow-ups, and writes a funnel briefing. | Structured auto-send is disabled until a private config explicitly enables it; browser portals remain review-gated. |
@@ -32,7 +32,7 @@ For the Saudi-national eligibility filter, include the real answer under **Ident
 cp automation.config.example.json automation.config.json
 ```
 
-Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. The file is ignored by Git.
+Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. Set `"includeRemote": true` only when you want explicitly marked remote roles in addition to Saudi roles. Country- or region-restricted remote listings remain review-only unless their stated hiring jurisdiction is compatible with your location. The file is ignored by Git.
 
 ### 3. Install and check the project
 
@@ -104,7 +104,7 @@ Add only career-site slugs you have verified from the employer URL. Both channel
 }
 ```
 
-The daily run fetches their public listings, scores the Saudi roles, creates tailored material for qualified roles, and stops at a review-ready application link. Never set either channel to `structured-submit`.
+The daily run fetches their public listings, scores Saudi roles and any explicitly enabled compatible remote roles, creates tailored material for qualified roles, and stops at a review-ready application link. Never set either channel to `structured-submit`.
 
 ## The daily loop
 

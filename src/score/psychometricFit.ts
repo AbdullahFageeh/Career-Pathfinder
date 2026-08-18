@@ -213,6 +213,11 @@ const SPECIALTY_REQUIREMENTS: ReadonlyArray<{
     label: "hospitality and food-and-beverage operations specialization",
     jobTerms: ["food and beverage", "dining hall", "high-volume restaurants", "food halls", "restaurant operations", "hospitality operations"],
     profileEvidenceTerms: ["hospitality operations", "food and beverage operations", "restaurant management"]
+  },
+  {
+    label: "go-to-market, demand-generation, and revenue-operations specialization",
+    jobTerms: ["go-to-market strategy", "gtm strategy", "revenue operations", "revops", "demand generation", "top-of-funnel"],
+    profileEvidenceTerms: ["go-to-market", "gtm strategy", "revenue operations", "revops", "demand generation", "marketing strategy"]
   }
 ];
 
