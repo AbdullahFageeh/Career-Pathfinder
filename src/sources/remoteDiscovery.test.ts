@@ -84,3 +84,17 @@ test("holds country-restricted remote roles even when remote search is enabled",
   assert.equal(assessment.eligible, false);
   assert.ok(assessment.blockers.some((blocker) => blocker.kind === "remote-jurisdiction-restricted"));
 });
+
+
+test("allows country-restricted remote roles in worldwide mode but flags the jurisdiction for review", () => {
+  const job = {
+    ...remoteJob(),
+    id: "remote:us-only-review",
+    location: "Remote - United States only",
+    tags: ["official-source", "remote"]
+  };
+  const assessment = assessJobEligibility(job, { allowRemote: true, remoteScope: "worldwide" });
+
+  assert.equal(assessment.eligible, true);
+  assert.ok(assessment.warnings.some((warning) => warning.kind === "remote-jurisdiction-review"));
+});

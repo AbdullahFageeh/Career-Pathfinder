@@ -60,6 +60,8 @@ export type AutomationDeskConfig = {
   selectionProfile?: "standard" | "psychometric-first";
   /** When enabled, explicitly configured official sources may also return remote roles. Defaults to false. */
   includeRemote: boolean;
+  /** Compatible remote keeps only jurisdiction-compatible locations; worldwide includes all remote locations for review. */
+  remoteScope: "compatible" | "worldwide";
   /** Disabled by default; enables only configured structured-channel full-auto submissions. */
   autoSubmitEnabled: boolean;
   caps: ApplicationCapConfig;
@@ -103,6 +105,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
   const automationMode = requireAutomationMode(value.automationMode);
   const selectionProfile = readSelectionProfile(value.selectionProfile);
   const includeRemote = readBooleanWithDefault(value.includeRemote, "includeRemote", false);
+  const remoteScope = readRemoteScope(value.remoteScope);
   const autoSubmitEnabled = readBooleanWithDefault(value.autoSubmitEnabled, "autoSubmitEnabled", false);
   const parsedCaps: ApplicationCapConfig = {
     dailyApplications: requireIntegerInRange(caps.dailyApplications, "dailyApplications", 0, MAX_DAILY_APPLICATION_CAP),
@@ -142,6 +145,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
     automationMode,
     selectionProfile,
     includeRemote,
+    remoteScope,
     autoSubmitEnabled,
     caps: parsedCaps,
     thresholds: parsedThresholds,
@@ -248,6 +252,13 @@ function readSelectionProfile(value: unknown): AutomationDeskConfig["selectionPr
     return "standard";
   }
   return requireEnum(value, "selectionProfile", ["standard", "psychometric-first"] as const);
+}
+
+function readRemoteScope(value: unknown): AutomationDeskConfig["remoteScope"] {
+  if (value === undefined) {
+    return "compatible";
+  }
+  return requireEnum(value, "remoteScope", ["compatible", "worldwide"] as const);
 }
 
 function requireIdentifier(value: unknown, label: string): string {

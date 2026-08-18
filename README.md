@@ -32,7 +32,7 @@ For the Saudi-national eligibility filter, include the real answer under **Ident
 cp automation.config.example.json automation.config.json
 ```
 
-Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. Set `"includeRemote": true` only when you want explicitly marked remote roles in addition to Saudi roles. Country- or region-restricted remote listings remain review-only unless their stated hiring jurisdiction is compatible with your location. The file is ignored by Git.
+Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. Set `"includeRemote": true` for remote roles; use `"remoteScope": "worldwide"` to search every explicitly remote location. Country- or region-restricted roles stay review-only and are flagged for work-authorization, payroll, and residency confirmation. The file is ignored by Git.
 
 ### 3. Install and check the project
 

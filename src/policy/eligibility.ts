@@ -15,6 +15,7 @@ export type EligibilityBlocker = {
 
 export type EligibilityWarningKind =
   | "unverified-location"
+  | "remote-jurisdiction-review"
   | "unofficial-source"
   | "seniority-mismatch-risk"
   | "language-requirement";
@@ -45,6 +46,8 @@ export type JobEligibilityOptions = {
   candidate?: CandidateEligibilityContext;
   /** Remote roles are rejected unless this opt-in is explicitly enabled. */
   allowRemote?: boolean;
+  /** Worldwide remote retains country-restricted roles for review instead of treating them as immediately viable. */
+  remoteScope?: "compatible" | "worldwide";
   blockedCompanies?: readonly string[];
   requireApplicationChannel?: boolean;
   now?: string;
@@ -190,7 +193,10 @@ export function assessJobEligibility(
   const blockers: EligibilityBlocker[] = [];
   const warnings: EligibilityWarning[] = [];
 
-  if (!locationLooksSaudi && !(options.allowRemote === true && remoteFriendly)) {
+  const worldwideRemote = options.remoteScope === "worldwide";
+  const enabledRemote = options.allowRemote === true && remoteFriendly;
+
+  if (!locationLooksSaudi && !enabledRemote) {
     blockers.push({
       kind: "outside-target-country",
       message: job.location
@@ -199,10 +205,17 @@ export function assessJobEligibility(
     });
   }
 
-  if (!locationLooksSaudi && options.allowRemote === true && remoteFriendly && !remoteJurisdictionCompatible) {
+  if (!locationLooksSaudi && enabledRemote && !remoteJurisdictionCompatible && !worldwideRemote) {
     blockers.push({
       kind: "remote-jurisdiction-restricted",
       message: `Remote location "${job.location ?? "unspecified"}" is limited to a region or country that is not verified as compatible with work from Saudi Arabia.`
+    });
+  }
+
+  if (!locationLooksSaudi && enabledRemote && !remoteJurisdictionCompatible && worldwideRemote) {
+    warnings.push({
+      kind: "remote-jurisdiction-review",
+      message: `Remote location "${job.location ?? "unspecified"}" has a stated country or regional restriction. Confirm work authorization, payroll availability, and residency before applying.`
     });
   }
 

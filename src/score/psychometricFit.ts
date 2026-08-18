@@ -218,6 +218,16 @@ const SPECIALTY_REQUIREMENTS: ReadonlyArray<{
     label: "go-to-market, demand-generation, and revenue-operations specialization",
     jobTerms: ["go-to-market strategy", "gtm strategy", "revenue operations", "revops", "demand generation", "top-of-funnel"],
     profileEvidenceTerms: ["go-to-market", "gtm strategy", "revenue operations", "revops", "demand generation", "marketing strategy"]
+  },
+  {
+    label: "employee-lifecycle, HR, payroll, and time-attendance specialization",
+    jobTerms: ["employee lifecycle", "time and attendance", "time & attendance", "payroll coordination", "employment law", "hr systems", "employee relations"],
+    profileEvidenceTerms: ["employee lifecycle", "human resources", "hr operations", "payroll", "time and attendance", "employment law"]
+  },
+  {
+    label: "customer-experience tooling and customer-success platform specialization",
+    jobTerms: ["zendesk", "vitally", "customer-success tooling", "customer success tooling", "support platform", "cx operations"],
+    profileEvidenceTerms: ["zendesk", "vitally", "customer success operations", "support operations", "cx operations"]
   }
 ];
 

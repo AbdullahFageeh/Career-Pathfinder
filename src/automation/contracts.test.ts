@@ -165,3 +165,12 @@ test("accepts explicit remote discovery and defaults older configs to Saudi-only
   assert.equal(remoteEnabled.includeRemote, true);
   assert.equal(defaulted.includeRemote, false);
 });
+
+
+test("accepts explicit worldwide remote scope and defaults older configs to compatible scope", () => {
+  const worldwide = validateAutomationDeskConfig({ ...validConfig, includeRemote: true, remoteScope: "worldwide" });
+  const defaulted = validateAutomationDeskConfig(validConfig);
+
+  assert.equal(worldwide.remoteScope, "worldwide");
+  assert.equal(defaulted.remoteScope, "compatible");
+});

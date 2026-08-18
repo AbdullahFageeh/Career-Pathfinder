@@ -233,3 +233,39 @@ test("holds a GTM strategy role without verified GTM, demand-generation, or reve
   assert.equal(fit.band, "skip");
   assert.ok(fit.reasons.some((reason) => reason.includes("go-to-market")));
 });
+
+
+test("holds an HR time-and-attendance role without verified employee-lifecycle or payroll evidence", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "Lifecycle Specialist: Time & Attendance",
+      location: "Remote - UK",
+      description:
+        "Manage employee lifecycle events, time and attendance, payroll coordination, employment law compliance, HR systems, and employee data."
+    }),
+    { now: "2026-08-18T00:00:00.000Z", selectionProfile: "psychometric-first", allowRemote: true, remoteScope: "worldwide" }
+  );
+
+  assert.equal(fit.verifiedSpecialtyCompatible, false);
+  assert.equal(fit.band, "skip");
+  assert.ok(fit.reasons.some((reason) => reason.includes("employee-lifecycle")));
+});
+
+
+test("holds a CX tooling role without verified Zendesk, customer-success, or support-platform evidence", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "CX Operations Manager, Tooling",
+      location: "Remote-Western Europe",
+      description:
+        "Own Zendesk, Vitally, customer-success tooling, support platform integrations, workflow automation, testing, and ongoing customer-experience platform operations."
+    }),
+    { now: "2026-08-18T00:00:00.000Z", selectionProfile: "psychometric-first", allowRemote: true, remoteScope: "worldwide" }
+  );
+
+  assert.equal(fit.verifiedSpecialtyCompatible, false);
+  assert.equal(fit.band, "skip");
+  assert.ok(fit.reasons.some((reason) => reason.includes("customer-experience tooling")));
+});

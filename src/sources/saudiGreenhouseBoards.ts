@@ -125,7 +125,7 @@ export async function discoverSaudiGreenhouseRoles(
 
     for (const job of board.jobs) {
       const location = readJobLocation(job);
-      if (!acceptsLocation(location, job.content ?? "", options.includeRemote === true)) {
+      if (!acceptsLocation(location, options.includeRemote === true)) {
         continue;
       }
       if (options.filterByTargetTitles !== false && !matchesTargetTitle(job.title ?? "", options.targetTitleTerms)) {
@@ -170,7 +170,7 @@ export function normalizeBoardJob(
   const applyUrl = normalizeText(job.absolute_url) || undefined;
   const city = detectSaudiCity(location);
 
-  const remote = looksRemote(`${location} ${job.content ?? ""}`);
+  const remote = looksRemote(location);
   const tags = [
     "official-source",
     ...(looksSaudi(location) ? ["saudi-arabia"] : []),
@@ -282,8 +282,8 @@ function readJobLocation(job: GreenhouseBoardJob): string {
   return "";
 }
 
-function acceptsLocation(location: string, content: string, includeRemote: boolean): boolean {
-  return looksSaudi(location) || (includeRemote && looksRemote(`${location} ${content}`));
+function acceptsLocation(location: string, includeRemote: boolean): boolean {
+  return looksSaudi(location) || (includeRemote && looksRemote(location));
 }
 
 function looksSaudi(location: string): boolean {

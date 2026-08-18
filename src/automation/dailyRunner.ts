@@ -13,7 +13,7 @@ import {
   getAutomationRunByIdempotencyKey
 } from "./runStore.js";
 
-const SCORING_POLICY_VERSION = "11";
+const SCORING_POLICY_VERSION = "15";
 
 export type DailyAutomationDeskOptions = {
   storage: PipelineStorage;
@@ -85,6 +85,7 @@ export async function runDailyAutomationDesk(
           isSaudiNational: isSaudiNational(options.config)
         },
         allowRemote: options.config.includeRemote,
+        remoteScope: options.config.remoteScope,
         selectionProfile: options.config.selectionProfile ?? "standard"
       }
     );

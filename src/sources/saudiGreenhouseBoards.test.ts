@@ -245,3 +245,28 @@ test("Saudi-national title wording is blocked unless candidate nationality is co
   assert.equal(assessJobEligibility(job).requiresSaudiNationality, true);
   assert.equal(assessJobEligibility(job, { candidate: { isSaudiNational: true } }).eligible, true);
 });
+
+
+test("does not treat generic remote-benefit wording as an explicitly remote Greenhouse location", async () => {
+  const { fetchImpl } = buildFetchStub({
+    careem: {
+      jobs: [{
+        id: 901,
+        title: "Product Operations Specialist",
+        absolute_url: "https://boards.greenhouse.io/careem/jobs/901",
+        location: { name: "Karachi, Pakistan" },
+        content: "Work 4 days a week in office and 1 day from home; work remotely from any country for 30 days each year."
+      }]
+    }
+  });
+
+  const result = await discoverSaudiGreenhouseRoles({
+    boardTokens: ["careem"],
+    includeRemote: true,
+    filterByTargetTitles: false,
+    fetchImpl,
+    now
+  });
+
+  assert.equal(result.listings.length, 0);
+});
