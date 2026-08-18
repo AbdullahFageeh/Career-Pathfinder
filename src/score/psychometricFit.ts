@@ -148,6 +148,11 @@ const CAREER_DOMAIN_SIGNALS: readonly SignalGroup[] = [
     label: "human systems and workforce development",
     score: 30,
     terms: ["organizational development", "organisation development", "people operations", "workforce development", "learning and development", "employee experience"]
+  },
+  {
+    label: "transferable operations and client-delivery coordination",
+    score: 30,
+    terms: ["vendor delivery", "supplier coordination", "client implementation", "client delivery", "quality control", "issue resolution", "cross-functional project coordination"]
   }
 ];
 

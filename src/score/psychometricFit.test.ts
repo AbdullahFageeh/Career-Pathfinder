@@ -269,3 +269,21 @@ test("holds a CX tooling role without verified Zendesk, customer-success, or sup
   assert.equal(fit.band, "skip");
   assert.ok(fit.reasons.some((reason) => reason.includes("customer-experience tooling")));
 });
+
+
+test("recognizes transferable operations-delivery evidence without bypassing specialty safeguards", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "Remote Operations Delivery Coordinator",
+      location: "Remote - Global",
+      description:
+        "Coordinate vendor delivery, client implementation, stakeholder workflows, quality control, schedules, issue resolution, and cross-functional project coordination."
+    }),
+    { now: "2026-08-18T00:00:00.000Z", selectionProfile: "psychometric-first", allowRemote: true, remoteScope: "worldwide" }
+  );
+
+  assert.equal(fit.careerDomainCompatible, true);
+  assert.ok((fit.careerDomainScore ?? 0) >= 30);
+  assert.equal(fit.verifiedSpecialtyCompatible, true);
+});
