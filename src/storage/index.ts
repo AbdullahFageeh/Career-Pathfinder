@@ -8,6 +8,10 @@ export {
   resolveDefaultSqliteStoragePath,
   type SqliteStorageOptions
 } from "./sqliteStore.js";
+export {
+  withPipelineStorage,
+  type PipelineStorageProviderOptions
+} from "./lifecycle.js";
 export type {
   PipelineStorage,
   PipelineStorageSnapshot,

@@ -32,7 +32,7 @@ import {
   loadRoleCorpus,
   type SaudiBoardDiscoveryResult
 } from "../sources/index.js";
-import { createSqliteStorage, type PipelineStorage } from "../storage/index.js";
+import { type PipelineStorage, withPipelineStorage } from "../storage/index.js";
 import { buildTailoredResume } from "../tailor/index.js";
 import type { ApplicationRecord, CandidateProfile, JobPosting } from "../shared/contracts.js";
 import { ingestJobPosting, type IngestJobPostingInput } from "../ingest/index.js";
@@ -86,9 +86,9 @@ export async function runShortlistOperation(
   }
 
   if (options.includeStoredJobs !== false) {
-    const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
     try {
-      for (const job of await storage.listJobPostings()) {
+      const storedJobs = await withPipelineStorage(options, (storage) => storage.listJobPostings());
+      for (const job of storedJobs) {
         jobs.set(job.id, job);
       }
     } catch {
@@ -110,7 +110,6 @@ export async function runShortlistOperation(
   const markdown = formatShortlistMarkdown(ranked, {
     ...(options.now ? { generatedAt: options.now } : {})
   });
-
   const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
   if (outputPath) {
     await mkdir(dirname(outputPath), { recursive: true });
@@ -296,82 +295,83 @@ export async function runReviewPacketOperation(
     referencePath: options.referencePath,
     profileId: options.profileId
   });
-  const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
-  const outputDir = resolve(options.outputDir ?? join(process.cwd(), "artifacts", "review"));
-  const requestedJobIds = options.jobIds ? new Set(options.jobIds) : undefined;
-  const records = await storage.listApplicationRecords();
-  const packets: ReviewPacket[] = [];
-  const skippedJobIds: string[] = [];
+  return withPipelineStorage(options, async (storage) => {
+    const outputDir = resolve(options.outputDir ?? join(process.cwd(), "artifacts", "review"));
+    const requestedJobIds = options.jobIds ? new Set(options.jobIds) : undefined;
+    const records = await storage.listApplicationRecords();
+    const packets: ReviewPacket[] = [];
+    const skippedJobIds: string[] = [];
 
-  await mkdir(outputDir, { recursive: true });
+    await mkdir(outputDir, { recursive: true });
 
-  for (const record of records) {
-    if (record.status !== "ats-passed" || (requestedJobIds && !requestedJobIds.has(record.jobId))) {
-      continue;
-    }
-    const job = await storage.getJobPosting(record.jobId);
-    if (!job) {
-      skippedJobIds.push(record.jobId);
-      continue;
-    }
+    for (const record of records) {
+      if (record.status !== "ats-passed" || (requestedJobIds && !requestedJobIds.has(record.jobId))) {
+        continue;
+      }
+      const job = await storage.getJobPosting(record.jobId);
+      if (!job) {
+        skippedJobIds.push(record.jobId);
+        continue;
+      }
 
-    const resume = buildTailoredResume(profile, job);
-    const renderedResume = await renderResumeDocument(profile, job, resume, {
-      outputDir,
-      formats: options.formats ?? ["pdf", "html"],
-      ...(options.browserExecutablePath ? { browserExecutablePath: options.browserExecutablePath } : {})
-    });
-    const draft = buildCoverLetterDraft(profile, job, resume, {
-      ...(options.now ? { now: options.now } : {})
-    });
-    const letterStem = buildDocumentFileStem(profile, job, "Cover-Letter");
-    const letterHtml = renderCoverLetterDocumentHtml(profile, job, {
-      salutation: draft.salutation,
-      paragraphs: draft.paragraphs,
-      signOff: draft.signOff
-    });
-    const renderedLetter = await writeApplicationDocument(letterHtml, letterStem, {
-      outputDir,
-      formats: options.formats ?? ["pdf", "html"],
-      ...(options.browserExecutablePath ? { browserExecutablePath: options.browserExecutablePath } : {})
-    });
-    const letterTextPath = join(renderedLetter.outputDir, `${letterStem}.txt`);
-    await writeFile(letterTextPath, formatCoverLetterText(draft, profile), "utf8");
+      const resume = buildTailoredResume(profile, job);
+      const renderedResume = await renderResumeDocument(profile, job, resume, {
+        outputDir,
+        formats: options.formats ?? ["pdf", "html"],
+        ...(options.browserExecutablePath ? { browserExecutablePath: options.browserExecutablePath } : {})
+      });
+      const draft = buildCoverLetterDraft(profile, job, resume, {
+        ...(options.now ? { now: options.now } : {})
+      });
+      const letterStem = buildDocumentFileStem(profile, job, "Cover-Letter");
+      const letterHtml = renderCoverLetterDocumentHtml(profile, job, {
+        salutation: draft.salutation,
+        paragraphs: draft.paragraphs,
+        signOff: draft.signOff
+      });
+      const renderedLetter = await writeApplicationDocument(letterHtml, letterStem, {
+        outputDir,
+        formats: options.formats ?? ["pdf", "html"],
+        ...(options.browserExecutablePath ? { browserExecutablePath: options.browserExecutablePath } : {})
+      });
+      const letterTextPath = join(renderedLetter.outputDir, `${letterStem}.txt`);
+      await writeFile(letterTextPath, formatCoverLetterText(draft, profile), "utf8");
 
-    const applicationUrl = job.applicationTarget?.url ?? job.source.url;
-    const resumePaths = renderedResume.documents.map((document) => document.outputPath);
-    const coverLetterPaths = [...renderedLetter.documents.map((document) => document.outputPath), letterTextPath];
-    const prefillCommand = buildReviewPrefillCommand(job, resumePaths);
-    const packetStem = `${buildDocumentFileStem(profile, job, "CV")}-Review-Packet`;
-    const reviewPath = join(outputDir, `${packetStem}.md`);
-    await writeFile(
-      reviewPath,
-      formatReviewPacketMarkdown({
-        job,
-        record,
-        applicationUrl,
+      const applicationUrl = job.applicationTarget?.url ?? job.source.url;
+      const resumePaths = renderedResume.documents.map((document) => document.outputPath);
+      const coverLetterPaths = [...renderedLetter.documents.map((document) => document.outputPath), letterTextPath];
+      const prefillCommand = buildReviewPrefillCommand(job, resumePaths);
+      const packetStem = `${buildDocumentFileStem(profile, job, "CV")}-Review-Packet`;
+      const reviewPath = join(outputDir, `${packetStem}.md`);
+      await writeFile(
+        reviewPath,
+        formatReviewPacketMarkdown({
+          job,
+          record,
+          applicationUrl,
+          resumePaths,
+          coverLetterPaths,
+          prefillCommand,
+          generatedAt: options.now
+        }),
+        "utf8"
+      );
+
+      packets.push({
+        jobId: job.id,
+        title: job.title,
+        company: job.company,
+        platform: job.applicationTarget?.platform ?? "manual",
+        ...(applicationUrl ? { applicationUrl } : {}),
+        reviewPath,
         resumePaths,
         coverLetterPaths,
-        prefillCommand,
-        generatedAt: options.now
-      }),
-      "utf8"
-    );
+        ...(prefillCommand ? { prefillCommand } : {})
+      });
+    }
 
-    packets.push({
-      jobId: job.id,
-      title: job.title,
-      company: job.company,
-      platform: job.applicationTarget?.platform ?? "manual",
-      ...(applicationUrl ? { applicationUrl } : {}),
-      reviewPath,
-      resumePaths,
-      coverLetterPaths,
-      ...(prefillCommand ? { prefillCommand } : {})
-    });
-  }
-
-  return { packets, skippedJobIds };
+    return { packets, skippedJobIds };
+  });
 }
 
 function buildReviewPrefillCommand(job: JobPosting, resumePaths: string[]): string | undefined {
@@ -455,55 +455,55 @@ export type FollowUpOperationResult = {
 export async function runFollowUpOperation(
   options: FollowUpOperationOptions = {}
 ): Promise<FollowUpOperationResult> {
-  const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
-  const now = options.now ?? new Date().toISOString();
+  return withPipelineStorage(options, async (storage) => {
+    const now = options.now ?? new Date().toISOString();
 
-  let profile: CandidateProfile | undefined;
-  try {
-    profile = await loadCandidateProfile({
-      referencePath: options.referencePath,
-      profileId: options.profileId
-    });
-  } catch {
-    profile = undefined;
-  }
-
-  const records = await storage.listApplicationRecords();
-  let scheduled = 0;
-  const updatedRecords: ApplicationRecord[] = [];
-
-  for (const record of records) {
-    if (options.schedule === false) {
-      updatedRecords.push(record);
-      continue;
+    let profile: CandidateProfile | undefined;
+    try {
+      profile = await loadCandidateProfile({
+        referencePath: options.referencePath,
+        profileId: options.profileId
+      });
+    } catch {
+      profile = undefined;
     }
-    const { record: nextRecord, plan } = ensureFollowUpLadder(record, {
-      ...(profile ? { profile } : {}),
-      ...(options.offsetDays ? { offsetDays: options.offsetDays } : {}),
-      now
-    });
-    if (plan.steps.length > 0) {
-      scheduled += plan.steps.length;
-      await storage.upsertApplicationRecord(nextRecord);
+
+    const records = await storage.listApplicationRecords();
+    let scheduled = 0;
+    const updatedRecords: ApplicationRecord[] = [];
+
+    for (const record of records) {
+      if (options.schedule === false) {
+        updatedRecords.push(record);
+        continue;
+      }
+      const { record: nextRecord, plan } = ensureFollowUpLadder(record, {
+        ...(profile ? { profile } : {}),
+        ...(options.offsetDays ? { offsetDays: options.offsetDays } : {}),
+        now
+      });
+      if (plan.steps.length > 0) {
+        scheduled += plan.steps.length;
+        await storage.upsertApplicationRecord(nextRecord);
+      }
+      updatedRecords.push(nextRecord);
     }
-    updatedRecords.push(nextRecord);
-  }
+    const due = listDueFollowUps(updatedRecords, now);
+    const markdown = formatDueFollowUpsMarkdown(due, { generatedAt: now });
 
-  const due = listDueFollowUps(updatedRecords, now);
-  const markdown = formatDueFollowUpsMarkdown(due, { generatedAt: now });
+    const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
+    if (outputPath) {
+      await mkdir(dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, markdown, "utf8");
+    }
 
-  const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
-  if (outputPath) {
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, markdown, "utf8");
-  }
-
-  return {
-    scheduled,
-    due,
-    markdown,
-    ...(outputPath ? { outputPath } : {})
-  };
+    return {
+      scheduled,
+      due,
+      markdown,
+      ...(outputPath ? { outputPath } : {})
+    };
+  });
 }
 
 export type ReportOperationOptions = {
@@ -524,26 +524,27 @@ export type ReportOperationResult = {
 export async function runReportOperation(
   options: ReportOperationOptions = {}
 ): Promise<ReportOperationResult> {
-  const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
-  const records = await storage.listApplicationRecords();
+  return withPipelineStorage(options, async (storage) => {
+    const records = await storage.listApplicationRecords();
 
-  const report = buildFunnelReport(records, {
-    ...(options.now ? { now: options.now } : {}),
-    ...(options.staleAfterDays === undefined ? {} : { staleAfterDays: options.staleAfterDays })
+    const report = buildFunnelReport(records, {
+      ...(options.now ? { now: options.now } : {}),
+      ...(options.staleAfterDays === undefined ? {} : { staleAfterDays: options.staleAfterDays })
+    });
+    const markdown = formatFunnelReportMarkdown(report);
+
+    const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
+    if (outputPath) {
+      await mkdir(dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, markdown, "utf8");
+    }
+
+    return {
+      report,
+      markdown,
+      ...(outputPath ? { outputPath } : {})
+    };
   });
-  const markdown = formatFunnelReportMarkdown(report);
-
-  const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
-  if (outputPath) {
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, markdown, "utf8");
-  }
-
-  return {
-    report,
-    markdown,
-    ...(outputPath ? { outputPath } : {})
-  };
 }
 
 export type DiscoverOperationOptions = {
@@ -594,15 +595,18 @@ export async function runDiscoverOperation(
 
   let persisted = 0;
   if (options.persist !== false && discovery.listings.length > 0) {
-    const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
-    for (const listing of discovery.listings) {
-      await storage.upsertJobPosting(
-        ingestJobPosting(listing, {
-          ...(options.now ? { defaultDiscoveredAt: options.now } : {})
-        })
-      );
-      persisted += 1;
-    }
+    persisted = await withPipelineStorage(options, async (storage) => {
+      let persistedCount = 0;
+      for (const listing of discovery.listings) {
+        await storage.upsertJobPosting(
+          ingestJobPosting(listing, {
+            ...(options.now ? { defaultDiscoveredAt: options.now } : {})
+          })
+        );
+        persistedCount += 1;
+      }
+      return persistedCount;
+    });
   }
 
   return {

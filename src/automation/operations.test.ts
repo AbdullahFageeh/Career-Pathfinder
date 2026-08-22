@@ -9,8 +9,8 @@ import { createSqliteStorage } from "../storage/index.js";
 import type { CandidateProfile } from "../shared/contracts.js";
 
 const profile: CandidateProfile = {
-  id: "profile:abdullah",
-  fullName: "Abdullah Fageeh",
+  id: "profile:synthetic-candidate",
+  fullName: "Avery Morgan",
   country: "Saudi Arabia",
   headline: "Live event operations professional",
   targetRoleFamilies: ["venue operations", "event production"],
@@ -20,7 +20,7 @@ const profile: CandidateProfile = {
   recurringAnswers: []
 };
 
-test("runs configured Greenhouse discovery through the safe daily queue and writes a review report", async () => {
+test("runs configured Greenhouse discovery through the safe daily queue and writes a review report", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "automation-operation-test-"));
   const configPath = join(dir, "automation.config.json");
   const reportPath = join(dir, "review.md");
@@ -58,6 +58,10 @@ test("runs configured Greenhouse discovery through the safe daily queue and writ
   );
 
   const storage = createSqliteStorage({ storagePath: join(dir, "store.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
   const result = await runDailyAutomationOperation(
     {
       configPath,
@@ -103,12 +107,10 @@ test("runs configured Greenhouse discovery through the safe daily queue and writ
   assert.equal(result.run.queued.length, 1);
   assert.equal(result.outputPath, reportPath);
   assert.match(result.markdown, /Daily automation desk review queue/);
-
-  rmSync(dir, { recursive: true });
 });
 
 
-test("combines configured Greenhouse, Lever, and Workable discovery without bypassing review-only routing", async () => {
+test("combines configured Greenhouse, Lever, and Workable discovery without bypassing review-only routing", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "automation-operation-multi-ats-"));
   const configPath = join(dir, "automation.config.json");
   writeFileSync(
@@ -136,6 +138,10 @@ test("combines configured Greenhouse, Lever, and Workable discovery without bypa
     })
   );
   const storage = createSqliteStorage({ storagePath: join(dir, "store.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
   const result = await runDailyAutomationOperation(
     { configPath, storage, now: "2026-08-15T08:00:00.000Z" },
     {
@@ -195,6 +201,4 @@ test("combines configured Greenhouse, Lever, and Workable discovery without bypa
   assert.equal(result.discovery.sourcesQueried, 3);
   assert.equal(result.discovery.listings, 2);
   assert.equal(result.run.queued.length, 2);
-
-  rmSync(dir, { recursive: true });
 });

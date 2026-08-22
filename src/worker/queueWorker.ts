@@ -9,7 +9,11 @@ import {
   type EnqueueSingleJobPipelineOptions,
   type SingleJobPipelineQueuePayload
 } from "../queue/index.js";
-import { createSqliteStorage, type PipelineStorage, type StorageOptions } from "../storage/index.js";
+import {
+  type PipelineStorage,
+  type StorageOptions,
+  withPipelineStorage
+} from "../storage/index.js";
 import type { AutomationMode, QueueJob } from "../shared/contracts.js";
 import {
   applyToStoredJob,
@@ -51,81 +55,82 @@ export async function enqueueSingleJobPipelineRun(
   input: IngestJobPostingInput,
   options: EnqueueSingleJobPipelineRunOptions = {}
 ): Promise<QueueJob> {
-  const storage = resolveQueueStorage(options);
-
-  return enqueueSingleJobPipeline(storage, input, {
-    at: options.at,
-    scheduledFor: options.scheduledFor,
-    referencePath: options.referencePath,
-    profileId: options.profileId,
-    initialApplicationNote: options.initialApplicationNote,
-    renderOutputDir: options.renderOutputDir,
-    applyMode: options.applyMode,
-    allowFullAutoSubmission: options.allowFullAutoSubmission,
-    dataConsent: options.dataConsent,
-    maxAttempts: options.maxAttempts
+  return withPipelineStorage(options, async (storage) => {
+    return enqueueSingleJobPipeline(storage, input, {
+      at: options.at,
+      scheduledFor: options.scheduledFor,
+      referencePath: options.referencePath,
+      profileId: options.profileId,
+      initialApplicationNote: options.initialApplicationNote,
+      renderOutputDir: options.renderOutputDir,
+      applyMode: options.applyMode,
+      allowFullAutoSubmission: options.allowFullAutoSubmission,
+      dataConsent: options.dataConsent,
+      maxAttempts: options.maxAttempts
+    });
   });
 }
 
 export async function runPipelineQueueOnce(
   options: PipelineQueueRunOptions = {}
 ): Promise<PipelineQueueRunResult> {
-  const storage = resolveQueueStorage(options);
-  const workerId = options.workerId ?? `worker:${Date.now()}`;
-  const maxJobs = options.maxJobs ?? Number.MAX_SAFE_INTEGER;
-  let claimed = 0;
-  let completed = 0;
-  let failed = 0;
-  let deadLettered = 0;
+  return withPipelineStorage(options, async (storage) => {
+    const workerId = options.workerId ?? `worker:${Date.now()}`;
+    const maxJobs = options.maxJobs ?? Number.MAX_SAFE_INTEGER;
+    let claimed = 0;
+    let completed = 0;
+    let failed = 0;
+    let deadLettered = 0;
 
-  while (claimed < maxJobs) {
-    const queueJob = await storage.claimNextQueueJob({
-      workerId,
-      leaseDurationMs: options.leaseDurationMs ?? DEFAULT_LEASE_DURATION_MS,
-      now: options.now,
-      stages: [...PIPELINE_QUEUE_STAGES]
-    });
-
-    if (!queueJob) {
-      break;
-    }
-
-    claimed += 1;
-
-    try {
-      await processPipelineQueueJob(storage, queueJob, options);
-      await storage.upsertQueueJob(
-        markQueueJobCompleted(queueJob, {
-          at: options.now
-        })
-      );
-      completed += 1;
-    } catch (error) {
-      const failedQueueJob = markQueueJobFailed(queueJob, error, {
-        at: options.now,
-        retryDelayMs: options.retryDelayMs
+    while (claimed < maxJobs) {
+      const queueJob = await storage.claimNextQueueJob({
+        workerId,
+        leaseDurationMs: options.leaseDurationMs ?? DEFAULT_LEASE_DURATION_MS,
+        now: options.now,
+        stages: [...PIPELINE_QUEUE_STAGES]
       });
 
-      await storage.upsertQueueJob(failedQueueJob);
+      if (!queueJob) {
+        break;
+      }
 
-      if (failedQueueJob.state === "dead-letter") {
-        deadLettered += 1;
-      } else {
-        failed += 1;
+      claimed += 1;
+
+      try {
+        await processPipelineQueueJob(storage, queueJob, options);
+        await storage.upsertQueueJob(
+          markQueueJobCompleted(queueJob, {
+            at: options.now
+          })
+        );
+        completed += 1;
+      } catch (error) {
+        const failedQueueJob = markQueueJobFailed(queueJob, error, {
+          at: options.now,
+          retryDelayMs: options.retryDelayMs
+        });
+
+        await storage.upsertQueueJob(failedQueueJob);
+
+        if (failedQueueJob.state === "dead-letter") {
+          deadLettered += 1;
+        } else {
+          failed += 1;
+        }
       }
     }
-  }
 
-  return {
-    workerId,
-    claimed,
-    completed,
-    failed,
-    deadLettered,
-    remaining: (await storage.listQueueJobs()).filter(
-      (queueJob) => queueJob.state !== "completed" && queueJob.state !== "dead-letter"
-    ).length
-  };
+    return {
+      workerId,
+      claimed,
+      completed,
+      failed,
+      deadLettered,
+      remaining: (await storage.listQueueJobs()).filter(
+        (queueJob) => queueJob.state !== "completed" && queueJob.state !== "dead-letter"
+      ).length
+    };
+  });
 }
 
 async function processPipelineQueueJob(
@@ -265,18 +270,6 @@ async function requireStoredTailoredResume(storage: PipelineStorage, jobId: stri
   return tailoredResume;
 }
 
-function resolveQueueStorage(
-  options: StorageOptions & {
-    storage?: PipelineStorage;
-  }
-): PipelineStorage {
-  return (
-    options.storage ??
-    createSqliteStorage({
-      storagePath: options.storagePath
-    })
-  );
-}
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;

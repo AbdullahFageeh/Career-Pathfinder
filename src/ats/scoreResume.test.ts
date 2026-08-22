@@ -7,8 +7,8 @@ import { scoreAtsReadiness } from "./index.js";
 import { buildTailoredResume } from "../tailor/index.js";
 
 const sampleProfile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
   headline:
     "Installation, production, and site operations leader with delivery experience across complex live-event and venue environments.",
   targetRoleFamilies: [

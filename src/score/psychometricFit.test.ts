@@ -6,8 +6,8 @@ import { scoreJobFit } from "./fitScore.js";
 import type { CandidateProfile, JobPosting } from "../shared/contracts.js";
 
 const profile: CandidateProfile = {
-  id: "abdullah",
-  fullName: "Abdullah Fageeh",
+  id: "synthetic-candidate",
+  fullName: "Avery Morgan",
   headline: "Event Operations & Production Manager with systems and team delivery experience.",
   targetRoleFamilies: ["Event Operations Manager", "Site Operations Manager", "Production Manager"],
   coreProofPoints: [

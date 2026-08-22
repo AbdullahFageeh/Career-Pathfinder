@@ -11,7 +11,7 @@ import type {
   QueueJob,
   TailoredResume
 } from "../shared/contracts.js";
-import { createSqliteStorage } from "./index.js";
+import { createSqliteStorage, type PipelineStorage } from "./index.js";
 
 const sampleJob: JobPosting = {
   id: "job-site-manager",
@@ -152,19 +152,25 @@ test("sqlite storage persists pipeline artifacts and queue jobs across instances
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-sqlite-storage-"));
   const storagePath = join(tempDir, "pipeline-store.sqlite");
 
+  const firstStorage = createSqliteStorage({ storagePath });
+  let reopenedStorage: PipelineStorage | undefined;
   t.after(async () => {
+    await firstStorage.close();
+    await reopenedStorage?.close();
     await rm(tempDir, { recursive: true, force: true });
   });
-
-  const firstStorage = createSqliteStorage({ storagePath });
 
   await firstStorage.upsertJobPosting(sampleJob);
   await firstStorage.upsertTailoredResume(sampleResume);
   await firstStorage.upsertAtsAssessment(sampleAssessment);
   await firstStorage.upsertApplicationRecord(sampleApplicationRecord);
   await firstStorage.upsertQueueJob(sampleQueueJob);
+  await firstStorage.close();
+  await firstStorage.close();
+  await assert.rejects(() => firstStorage.listJobPostings(), /Pipeline storage is closed/);
 
   const secondStorage = createSqliteStorage({ storagePath });
+  reopenedStorage = secondStorage;
   const snapshot = await secondStorage.readSnapshot();
 
   assert.equal(Object.keys(snapshot.jobs).length, 1);
@@ -189,12 +195,12 @@ test("sqlite storage persists pipeline artifacts and queue jobs across instances
 test("sqlite storage claims the oldest due queue job and records the lease owner", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-sqlite-claim-"));
   const storagePath = join(tempDir, "pipeline-store.sqlite");
+  const storage = createSqliteStorage({ storagePath });
 
   t.after(async () => {
+    await storage.close();
     await rm(tempDir, { recursive: true, force: true });
   });
-
-  const storage = createSqliteStorage({ storagePath });
 
   await storage.upsertQueueJob(sampleQueueJobTwo);
   await storage.upsertQueueJob(sampleQueueJob);

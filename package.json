@@ -1,11 +1,21 @@
 {
-  "name": "job-project",
+  "name": "career-pathfinder",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Always-on job discovery and application automation scaffold.",
+  "description": "Saudi-first, evidence-bound career discovery and application workflow.",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AbdullahFageeh/Career-Pathfinder.git"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm run privacy:scan && npm test",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "privacy:scan": "node scripts/privacy/check-fixtures.mjs",
     "test": "npm run build && node --test dist/**/*.test.js",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",

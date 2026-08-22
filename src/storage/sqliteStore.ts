@@ -36,17 +36,38 @@ export function resolveDefaultSqliteStoragePath(storagePath?: string): string {
 export function createSqliteStorage(options: SqliteStorageOptions = {}): PipelineStorage {
   const storagePath = resolveDefaultSqliteStoragePath(options.storagePath);
   let databasePromise: Promise<DatabaseSync> | undefined;
+  let closePromise: Promise<void> | undefined;
+  let closed = false;
 
   async function getDatabase(): Promise<DatabaseSync> {
+    if (closed) {
+      throw new Error(`Pipeline storage is closed: ${storagePath}`);
+    }
     if (!databasePromise) {
       databasePromise = openDatabase(storagePath);
     }
 
     return databasePromise;
   }
+  async function close(): Promise<void> {
+    if (!closePromise) {
+      closed = true;
+      closePromise = (async () => {
+        if (!databasePromise) {
+          return;
+        }
+
+        const database = await databasePromise;
+        database.close();
+      })();
+    }
+
+    return closePromise;
+  }
 
   return {
     storagePath,
+    close,
     readSnapshot: async () => readSnapshotFromDatabase(await getDatabase()),
     getJobPosting: async (jobId) => getStoredEntity(await getDatabase(), "jobs", jobId),
     listJobPostings: async () =>

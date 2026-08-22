@@ -10,8 +10,8 @@ import { runSingleJobPipeline } from "./index.js";
 
 const profileReferenceFixture = `# Job Application Reference
 ## Identity and contact
-- Full legal name: Abdullah Fageeh
-- Preferred display name: Abdullah Fageeh
+- Full legal name: Avery Morgan
+- Preferred display name: Avery Morgan
 
 ## Professional headline
 - Default headline: Installation Manager | Production Manager | Site Operations
@@ -41,15 +41,15 @@ const profileReferenceFixture = `# Job Application Reference
 - Fundamentals of Artificial Intelligence, SDAIA (2025)
 
 ## Documents and file references
-- Master CV PDF: /Users/abdullah/Desktop/Abdullah_Fageeh_CV_2026.pdf
+- Master CV PDF: /Users/avery/Desktop/Avery_Morgan_CV_2026.pdf
 `;
 
 function createApplyReadyProfileReferenceFixture(resumePath: string): string {
   return `# Job Application Reference
 ## Identity and contact
-- Full legal name: Abdullah Fageeh
-- Preferred display name: Abdullah Fageeh
-- Email: abdullah@example.com
+- Full legal name: Avery Morgan
+- Preferred display name: Avery Morgan
+- Email: avery@example.test
 - Phone: +49 123 4567
 
 ## Professional headline
@@ -122,8 +122,10 @@ test("runSingleJobPipeline persists one job flow idempotently", async (t) => {
   const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
   const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
   const outputDir = join(tempDir, "artifacts", "resumes");
+  let storage: ReturnType<typeof createSqliteStorage> | undefined;
 
   t.after(async () => {
+    await storage?.close();
     await rm(tempDir, { recursive: true, force: true });
   });
 
@@ -143,7 +145,7 @@ test("runSingleJobPipeline persists one job flow idempotently", async (t) => {
       outputDir
     }
   });
-  const storage = createSqliteStorage({ storagePath });
+  storage = createSqliteStorage({ storagePath });
   const snapshot = await storage.readSnapshot();
   const renderedArtifact = await readFile(secondRun.tailoredResume.outputPath ?? "", "utf8");
 
@@ -164,7 +166,7 @@ test("runSingleJobPipeline persists one job flow idempotently", async (t) => {
     secondRun.applicationRecord.statusHistory.map((entry) => entry.status),
     ["discovered", "tailored", "ats-passed"]
   );
-  assert.match(renderedArtifact, /<h1>Abdullah Fageeh<\/h1>/);
+  assert.match(renderedArtifact, /<h1>Avery Morgan<\/h1>/);
   assert.match(renderedArtifact, /Site Manager \(m\/w\/d\)/);
   assert.match(
     renderedArtifact,
@@ -177,7 +179,7 @@ test("runSingleJobPipeline optionally submits a supervised Greenhouse applicatio
   const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
   const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
   const outputDir = join(tempDir, "artifacts", "resumes");
-  const resumePath = join(tempDir, "Abdullah_Fageeh_CV.pdf");
+  const resumePath = join(tempDir, "Avery_Morgan_CV.pdf");
   let getCount = 0;
   let postCount = 0;
 
@@ -196,7 +198,7 @@ test("runSingleJobPipeline optionally submits a supervised Greenhouse applicatio
       const body = init?.body;
 
       assert.ok(body instanceof FormData);
-      assert.equal(body.get("first_name"), "Abdullah");
+      assert.equal(body.get("first_name"), "Avery");
       assert.equal(body.get("work_authorization"), "yes");
       assert.ok(body.get("resume") instanceof File);
 

@@ -9,8 +9,8 @@ import { buildTailoredResume } from "../tailor/index.js";
 import { renderTailoredResumeArtifact, renderTailoredResumeHtml } from "./index.js";
 
 const sampleProfile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
   headline:
     "Installation, production, and site operations leader with delivery experience across complex live-event and venue environments.",
   targetRoleFamilies: [
@@ -58,7 +58,7 @@ test("renderTailoredResumeHtml includes headline, role targeting, and key proof 
   const tailoredResume = buildTailoredResume(sampleProfile, siteManagerJob);
   const renderedHtml = renderTailoredResumeHtml(sampleProfile, siteManagerJob, tailoredResume);
 
-  assert.match(renderedHtml, /<h1>Abdullah Fageeh<\/h1>/);
+  assert.match(renderedHtml, /<h1>Avery Morgan<\/h1>/);
   assert.match(renderedHtml, /Target role:<\/strong> Site Manager \(m\/w\/d\) at ISS Integrated Facility Serv\. GmbH/);
   assert.match(
     renderedHtml,

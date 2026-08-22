@@ -9,11 +9,11 @@ import {
 } from "./greenhouseHosted.js";
 
 const sampleProfile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
-  preferredName: "Abdullah",
-  email: "abdullahfageeh@yahoo.com",
-  phone: "+966595266637",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
+  preferredName: "Avery",
+  email: "avery.morgan@example.test",
+  phone: "+966500000000",
   country: "Saudi Arabia",
   headline: "Installation Manager | Production Manager | Site Operations",
   targetRoleFamilies: ["Installation Manager", "Production Manager", "Site Operations"],
@@ -55,7 +55,7 @@ test("resolveHostedGreenhouseFieldValue fills built-in identity fields from the 
       sampleProfile,
       answerMap
     ),
-    "Abdullah"
+    "Avery"
   );
   assert.equal(
     resolveHostedGreenhouseFieldValue(

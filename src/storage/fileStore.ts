@@ -34,6 +34,7 @@ export function createFileBackedStorage(
 
   return {
     storagePath,
+    close: async () => undefined,
     readSnapshot: async () => readSnapshot(storagePath),
     getJobPosting: async (jobId) => (await readSnapshot(storagePath)).jobs[jobId],
     listJobPostings: async () =>

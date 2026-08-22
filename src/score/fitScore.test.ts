@@ -4,8 +4,8 @@ import type { CandidateProfile, JobPosting } from "../shared/contracts.js";
 import { formatShortlistMarkdown, rankJobOpportunities, scoreJobFit } from "./index.js";
 
 const profile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
   headline:
     "Event operations and installation manager delivering venue builds, site management, and supplier coordination across Saudi Arabia.",
   targetRoleFamilies: ["Installation Manager", "Site Operations Manager", "Venue Operations Manager"],

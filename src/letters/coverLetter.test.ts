@@ -13,9 +13,9 @@ import {
 const now = "2026-08-12T09:00:00.000Z";
 
 const profile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
-  email: "abdullah@example.com",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
+  email: "avery@example.test",
   phone: "+966500000000",
   country: "Saudi Arabia",
   headline: "Event operations and installation manager delivering venue builds across Saudi Arabia.",
@@ -54,7 +54,7 @@ test("buildCoverLetterDraft builds a factual letter from profile evidence", () =
   assert.equal(draft.refinedByLlm, false);
   assert.ok(draft.paragraphs.length >= 3);
   assert.match(draft.body, /Venue Operations Manager/);
-  assert.match(draft.body, /abdullah@example\.com/);
+  assert.match(draft.body, /avery@example\.test/);
   assert.ok(draft.wordCount > 40);
   assert.equal(
     findInventedClaims(draft.body, [
@@ -87,7 +87,7 @@ test("formatCoverLetterText produces a paste-ready email body", () => {
   const text = formatCoverLetterText(draft, profile);
 
   assert.ok(text.startsWith("Dear Example Events hiring team,"));
-  assert.ok(text.trimEnd().endsWith("Abdullah Fageeh"));
+  assert.ok(text.trimEnd().endsWith("Avery Morgan"));
 });
 
 test("refineCoverLetterWithLlm skips cleanly when no credentials are configured", async () => {

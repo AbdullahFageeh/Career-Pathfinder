@@ -13,9 +13,9 @@ import {
 } from "./index.js";
 
 const profile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
-  email: "abdullah@example.com",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
+  email: "avery@example.test",
   phone: "+966500000000",
   country: "Saudi Arabia",
   headline: "Event operations and installation manager delivering venue builds across Saudi Arabia.",
@@ -51,15 +51,15 @@ function buildResume(): TailoredResume {
 test("buildDocumentFileStem produces a recruiter-friendly ASCII file name", () => {
   const stem = buildDocumentFileStem(profile, job, "CV");
 
-  assert.equal(stem, "Abdullah-Fageeh_Venue-Operations-Manager_Example-Events-Co_CV");
+  assert.equal(stem, "Avery-Morgan_Venue-Operations-Manager_Example-Events-Co_CV");
   assert.doesNotMatch(stem, /[^A-Za-z0-9_-]/);
 });
 
 test("renderResumeDocumentHtml renders an ATS-safe single-column document", () => {
   const html = renderResumeDocumentHtml(profile, job, buildResume());
 
-  assert.match(html, /<h1>Abdullah Fageeh<\/h1>/);
-  assert.match(html, /abdullah@example\.com/);
+  assert.match(html, /<h1>Avery Morgan<\/h1>/);
+  assert.match(html, /avery@example\.test/);
   assert.match(html, /Venue Operations Manager/);
   assert.match(html, /@page \{ size: A4/);
   assert.doesNotMatch(html, /<table/);
@@ -105,7 +105,7 @@ test("writeApplicationDocument writes HTML and reports a clear reason when PDF e
     assert.equal(htmlDocument?.outputPath, join(outputDir, "Test_CV.html"));
 
     const written = await readFile(htmlDocument?.outputPath ?? "", "utf8");
-    assert.match(written, /Abdullah Fageeh/);
+    assert.match(written, /Avery Morgan/);
 
     if (result.documents.some((document) => document.format === "pdf")) {
       assert.equal(result.pdfSkippedReason, undefined);

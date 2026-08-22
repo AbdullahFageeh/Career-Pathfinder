@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 import { runCli } from "./index.js";
 import type {
@@ -14,8 +15,8 @@ import type { DailyAutomationOperationResult } from "../automation/operations.js
 import type { CandidateProfile } from "../shared/contracts.js";
 
 const profile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
   headline: "Event operations and installation manager.",
   targetRoleFamilies: ["Venue Operations Manager"],
   certifications: [],
@@ -23,6 +24,9 @@ const profile: CandidateProfile = {
   documents: [],
   recurringAnswers: []
 };
+function assertPathEndsWith(actual: unknown, ...segments: string[]): void {
+  assert.equal(String(actual).endsWith(join(...segments)), true);
+}
 
 test("runCli shortlist forwards options and prints the ranked list", async () => {
   const stdout: string[] = [];
@@ -124,7 +128,7 @@ test("runCli cv forwards output settings and reports document paths", async () =
 
   assert.equal(exitCode, 0);
   assert.deepEqual(captured?.formats, ["pdf", "html"]);
-  assert.match(String(captured?.outputDir), /artifacts\/cv$/);
+  assertPathEndsWith(captured?.outputDir, "artifacts", "cv");
   assert.match(stdout[0] ?? "", /Tailored CV generated\./);
   assert.match(stdout[0] ?? "", /Example_Candidate_CV\.pdf/);
 });
@@ -379,10 +383,10 @@ test("runCli automation:run forwards private paths and prints the daily queue su
   );
 
   assert.equal(exitCode, 0);
-  assert.match(String(captured?.configPath), /automation\.config\.json$/);
-  assert.match(String(captured?.storagePath), /data\/automation\.sqlite$/);
-  assert.match(String(captured?.referencePath), /APPLICATION_REFERENCE\.md$/);
-  assert.match(String(captured?.outputPath), /artifacts\/review\.md$/);
+  assertPathEndsWith(captured?.configPath, "automation.config.json");
+  assertPathEndsWith(captured?.storagePath, "data", "automation.sqlite");
+  assertPathEndsWith(captured?.referencePath, "APPLICATION_REFERENCE.md");
+  assertPathEndsWith(captured?.outputPath, "artifacts", "review.md");
   assert.match(stdout[0] ?? "", /Daily automation desk complete/);
   assert.match(stdout[0] ?? "", /roles found: 5/);
   assert.match(stdout[0] ?? "", /queued: 1/);
@@ -432,7 +436,7 @@ test("runCli review:packets forwards selected job and prints the manual handoff"
 
   assert.equal(exitCode, 0);
   assert.deepEqual(captured?.jobIds, ["workable:seven-7:123"]);
-  assert.match(String(captured?.storagePath), /data\/pipeline-store\.sqlite$/);
+  assertPathEndsWith(captured?.storagePath, "data", "pipeline-store.sqlite");
   assert.match(stdout[0] ?? "", /Review packets generated/);
   assert.match(stdout[0] ?? "", /apply\.workable\.com/);
 });

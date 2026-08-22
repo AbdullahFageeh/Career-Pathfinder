@@ -31,7 +31,7 @@ type SignalGroup = {
 };
 
 /**
- * This is an evidence-only translation of Abdullah's psychometric report.
+ * This is an evidence-only translation of the candidate psychometric report.
  * It is intentionally not a personality diagnosis and never infers employer
  * culture. It rewards role text that explicitly signals structured delivery,
  * systems improvement, empathetic leadership, hands-on implementation, and
@@ -271,7 +271,7 @@ export function assessPsychometricAlignment(job: JobPosting): PsychometricAlignm
 }
 
 /**
- * Keeps workstyle alignment grounded in Abdullah's proven and intended career domains.
+ * Keeps workstyle alignment grounded in the candidate's proven and intended career domains.
  * A strong workstyle match cannot promote an unrelated specialty into the application queue.
  */
 export function assessCareerDomainAlignment(job: JobPosting): CareerDomainAlignment {

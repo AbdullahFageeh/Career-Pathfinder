@@ -1,8 +1,10 @@
-# Saudi Job Search Operator
+# Career Pathfinder
 
-A **Saudi-first and remote-inclusive job-search operating system** for event production, venue operations, installation, site delivery, supplier coordination, and adjacent operational roles.
+A **Saudi-first, evidence-bound career discovery and application workflow** for event production, venue operations, installation, site delivery, supplier coordination, and adjacent operational roles.
 
 It turns the job search into a controlled daily application desk: collect trusted Saudi roles and explicitly enabled remote roles, rank them against verified experience, queue tailored materials, track what has actually been applied to, and surface follow-ups before opportunities go cold. It is intentionally low-volume and evidence-bound: unknown questions, untrusted sources, stale roles, country-restricted remote listings, and unsupported portals are held for review rather than guessed.
+
+Development setup and contribution commands are documented in [`docs/development.md`](docs/development.md). The documentation index is in [`docs/README.md`](docs/README.md).
 
 ## What it does
 
@@ -20,25 +22,25 @@ It turns the job search into a controlled daily application desk: collect truste
 
 Your personal facts stay local and are ignored by Git. Copy the template, then replace every example item with **real, verifiable evidence**. Keep the claim list specific: project names, scope, dates, scale, results, certifications, and contact details.
 
-```bash
-cp APPLICATION_REFERENCE.example.md APPLICATION_REFERENCE.md
-```
+PowerShell: `Copy-Item APPLICATION_REFERENCE.example.md APPLICATION_REFERENCE.md`
+
+macOS/Linux: `cp APPLICATION_REFERENCE.example.md APPLICATION_REFERENCE.md`
 
 For the Saudi-national eligibility filter, include the real answer under **Identity and contact** as `Nationality status: Saudi national` only if that is accurate. If this field is not confirmed, Saudi-national-only vacancies remain excluded rather than guessed.
 
 ### 2. Create the private automation settings
 
-```bash
-cp automation.config.example.json automation.config.json
-```
+PowerShell: `Copy-Item automation.config.example.json automation.config.json`
+
+macOS/Linux: `cp automation.config.example.json automation.config.json`
 
 Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. Set `"includeRemote": true` for remote roles; use `"remoteScope": "worldwide"` to search every explicitly remote location. Country- or region-restricted roles stay review-only and are flagged for work-authorization, payroll, and residency confirmation. The file is ignored by Git.
 
 ### 3. Install and check the project
 
 ```bash
-npm install
-npm test
+npm ci --ignore-scripts
+npm run check
 ```
 
 A healthy installation finishes with all tests passing. The repository contains an initial local corpus in `data/roles/`; it is part of the tracked project history even though newly generated local data is ignored.
@@ -243,16 +245,15 @@ src/
 ## Quality checks
 
 ```bash
-npm run typecheck
-npm test
+npm run check
 ```
 
-The test suite covers Saudi eligibility, source normalization and transient retry handling, fit scoring, letter invention guards, PDF fallback behavior, follow-up scheduling, funnel reporting, CLI command parsing, and the existing pipeline.
+`npm run check` runs strict TypeScript validation, builds the project, and executes the full Node test suite. The tests cover Saudi eligibility, source normalization and transient retry handling, fit scoring, letter invention guards, PDF fallback behavior, follow-up scheduling, funnel reporting, CLI command parsing, and the existing pipeline.
 
 ## Current limits
 
 Greenhouse, Lever, and Workable discovery cannot cover every Saudi vacancy, and public career data may be intermittently unavailable. Use employer career pages, referrals, LinkedIn, and job-board alerts alongside it. The review queue deliberately prepares documents and form handoffs but never makes the final employer submission. Greenhouse, Lever, Workable, company pages, LinkedIn, and other portals remain final-click review channels unless the hiring employer authorizes a dedicated structured adapter.
 
-## Licence
+## License
 
-Private project for Abdullah Fageeh.
+No open-source license has been declared. The repository is public for review and collaboration, but reuse rights are not granted unless a license is added later.

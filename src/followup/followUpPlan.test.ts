@@ -10,9 +10,9 @@ import {
 } from "./index.js";
 
 const profile: CandidateProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
-  email: "abdullah@example.com",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
+  email: "avery@example.test",
   phone: "+966500000000",
   headline: "Event operations and installation manager.",
   targetRoleFamilies: ["Venue Operations Manager"],
