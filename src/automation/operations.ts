@@ -14,7 +14,7 @@ import {
   type SaudiWorkableDiscoveryOptions,
   type SaudiWorkableDiscoveryResult
 } from "../sources/index.js";
-import { createSqliteStorage, type PipelineStorage } from "../storage/index.js";
+import { type PipelineStorage, withPipelineStorage } from "../storage/index.js";
 import type { CandidateProfile, JobPosting } from "../shared/contracts.js";
 import { validateAutomationDeskConfig, type AutomationDeskConfig } from "./contracts.js";
 import { runDailyAutomationDesk, type DailyAutomationDeskResult } from "./dailyRunner.js";
@@ -85,77 +85,78 @@ export async function runDailyAutomationOperation(
     referencePath: options.referencePath,
     profileId: options.profileId
   });
-  const storage = options.storage ?? createSqliteStorage({ storagePath: options.storagePath });
-  const greenhouseTokens = configuredTokens(config, "greenhouse", "boardToken");
-  const leverTokens = configuredTokens(config, "lever", "siteToken");
-  const workableTokens = configuredTokens(config, "workable", "siteToken");
+  return withPipelineStorage(options, async (storage) => {
+    const greenhouseTokens = configuredTokens(config, "greenhouse", "boardToken");
+    const leverTokens = configuredTokens(config, "lever", "siteToken");
+    const workableTokens = configuredTokens(config, "workable", "siteToken");
 
-  const [greenhouse, lever, workable] = await Promise.all([
-    greenhouseTokens.length > 0
-      ? deps.discoverSaudiGreenhouseRoles({
-          boardTokens: greenhouseTokens,
-          includeRemote: config.includeRemote,
-          filterByTargetTitles: false,
-          now: options.now
-        })
-      : Promise.resolve(emptyGreenhouseDiscovery(options.now)),
-    leverTokens.length > 0
-      ? deps.discoverSaudiLeverRoles({
-          siteTokens: leverTokens,
-          includeRemote: config.includeRemote,
-          filterByTargetTitles: false,
-          now: options.now
-        })
-      : Promise.resolve(emptyLeverDiscovery(options.now)),
-    workableTokens.length > 0
-      ? deps.discoverSaudiWorkableRoles({
-          siteTokens: workableTokens,
-          includeRemote: config.includeRemote,
-          filterByTargetTitles: false,
-          now: options.now
-        })
-      : Promise.resolve(emptyWorkableDiscovery(options.now))
-  ]);
+    const [greenhouse, lever, workable] = await Promise.all([
+      greenhouseTokens.length > 0
+        ? deps.discoverSaudiGreenhouseRoles({
+            boardTokens: greenhouseTokens,
+            includeRemote: config.includeRemote,
+            filterByTargetTitles: false,
+            now: options.now
+          })
+        : Promise.resolve(emptyGreenhouseDiscovery(options.now)),
+      leverTokens.length > 0
+        ? deps.discoverSaudiLeverRoles({
+            siteTokens: leverTokens,
+            includeRemote: config.includeRemote,
+            filterByTargetTitles: false,
+            now: options.now
+          })
+        : Promise.resolve(emptyLeverDiscovery(options.now)),
+      workableTokens.length > 0
+        ? deps.discoverSaudiWorkableRoles({
+            siteTokens: workableTokens,
+            includeRemote: config.includeRemote,
+            filterByTargetTitles: false,
+            now: options.now
+          })
+        : Promise.resolve(emptyWorkableDiscovery(options.now))
+    ]);
 
-  const discovery = combineDiscoveries(greenhouse, lever, workable, options.now);
-  const jobs = await normalizeDiscoveredJobs(discovery, storage);
-  const run = await runDailyAutomationDesk({
-    storage,
-    config,
-    profile,
-    jobs,
-    now: options.now,
-    referencePath: options.referencePath,
-    profileId: options.profileId
+    const discovery = combineDiscoveries(greenhouse, lever, workable, options.now);
+    const jobs = await normalizeDiscoveredJobs(discovery, storage);
+    const run = await runDailyAutomationDesk({
+      storage,
+      config,
+      profile,
+      jobs,
+      now: options.now,
+      referencePath: options.referencePath,
+      profileId: options.profileId
+    });
+    const markdown = formatAutomationReviewQueueMarkdown({
+      generatedAt: options.now,
+      run: run.run,
+      queued: run.queued.map((entry) => ({
+        job: entry.job,
+        fitScore: entry.fitScore,
+        queueJobId: entry.queueJob.id
+      })),
+      reviewRequired: run.reviewRequired
+    });
+    const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
+
+    if (outputPath) {
+      await mkdir(dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, markdown, "utf8");
+    }
+
+    return {
+      config,
+      discovery: {
+        sourcesQueried: discovery.sourcesQueried.length,
+        sourcesFailed: discovery.sourcesFailed.length,
+        listings: discovery.listings.length
+      },
+      run,
+      markdown,
+      ...(outputPath ? { outputPath } : {})
+    };
   });
-  const markdown = formatAutomationReviewQueueMarkdown({
-    generatedAt: options.now,
-    run: run.run,
-    queued: run.queued.map((entry) => ({
-      job: entry.job,
-      fitScore: entry.fitScore,
-      queueJobId: entry.queueJob.id
-    })),
-    reviewRequired: run.reviewRequired
-  });
-  const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
-
-  if (outputPath) {
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, markdown, "utf8");
-  }
-
-  return {
-    config,
-    discovery: {
-      sourcesQueried: discovery.sourcesQueried.length,
-      sourcesFailed: discovery.sourcesFailed.length,
-      listings: discovery.listings.length
-    },
-    run,
-    markdown,
-    ...(outputPath ? { outputPath } : {})
-  };
 }
 
 function configuredTokens(

@@ -17,9 +17,9 @@ import {
   type RenderTailoredResumeOptions
 } from "../render/index.js";
 import {
-  createSqliteStorage,
   type PipelineStorage,
-  type StorageOptions
+  type StorageOptions,
+  withPipelineStorage
 } from "../storage/index.js";
 import { buildTailoredResume, type TailorResumeOptions } from "../tailor/index.js";
 import {
@@ -71,51 +71,52 @@ export async function runSingleJobPipeline(
   input: IngestJobPostingInput,
   options: SingleJobPipelineOptions = {}
 ): Promise<SingleJobPipelineResult> {
-  const storage = resolvePipelineStorage(options);
-  const { job } = await persistIngestedJobPosting(input, {
-    storage,
-    defaultDiscoveredAt: options.defaultDiscoveredAt,
-    initialApplicationNote: options.initialApplicationNote
-  });
-  const { profile, tailoredResume } = await tailorJobPosting(job, {
-    storage,
-    referencePath: options.referencePath,
-    profileId: options.profileId,
-    tailorOptions: options.tailorOptions,
-    initialApplicationNote: options.initialApplicationNote
-  });
-  const { tailoredResume: renderedResume } = await renderStoredTailoredResume(job, tailoredResume, {
-    storage,
-    profile,
-    referencePath: options.referencePath,
-    profileId: options.profileId,
-    renderOptions: options.renderOptions
-  });
-  const { atsAssessment, applicationRecord } = await scoreStoredTailoredResume(job, renderedResume, {
-    storage,
-    initialApplicationNote: options.initialApplicationNote,
-    atsScoringOptions: options.atsScoringOptions
-  });
-  const appliedResult = options.applyOptions
-    ? await applyToStoredJob(job, renderedResume, {
-        storage,
-        profile,
-        referencePath: options.referencePath,
-        profileId: options.profileId,
-        initialApplicationNote: options.initialApplicationNote,
-        applyOptions: options.applyOptions
-      })
-    : undefined;
+  return withPipelineStorage(options, async (storage) => {
+    const { job } = await persistIngestedJobPosting(input, {
+      storage,
+      defaultDiscoveredAt: options.defaultDiscoveredAt,
+      initialApplicationNote: options.initialApplicationNote
+    });
+    const { profile, tailoredResume } = await tailorJobPosting(job, {
+      storage,
+      referencePath: options.referencePath,
+      profileId: options.profileId,
+      tailorOptions: options.tailorOptions,
+      initialApplicationNote: options.initialApplicationNote
+    });
+    const { tailoredResume: renderedResume } = await renderStoredTailoredResume(job, tailoredResume, {
+      storage,
+      profile,
+      referencePath: options.referencePath,
+      profileId: options.profileId,
+      renderOptions: options.renderOptions
+    });
+    const { atsAssessment, applicationRecord } = await scoreStoredTailoredResume(job, renderedResume, {
+      storage,
+      initialApplicationNote: options.initialApplicationNote,
+      atsScoringOptions: options.atsScoringOptions
+    });
+    const appliedResult = options.applyOptions
+      ? await applyToStoredJob(job, renderedResume, {
+          storage,
+          profile,
+          referencePath: options.referencePath,
+          profileId: options.profileId,
+          initialApplicationNote: options.initialApplicationNote,
+          applyOptions: options.applyOptions
+        })
+      : undefined;
 
-  return {
-    job,
-    profile: appliedResult?.profile ?? profile,
-    tailoredResume: renderedResume,
-    atsAssessment,
-    applicationRecord: appliedResult?.applicationRecord ?? applicationRecord,
-    applicationAttempt: appliedResult?.applicationAttempt,
-    storagePath: storage.storagePath
-  };
+    return {
+      job,
+      profile: appliedResult?.profile ?? profile,
+      tailoredResume: renderedResume,
+      atsAssessment,
+      applicationRecord: appliedResult?.applicationRecord ?? applicationRecord,
+      applicationAttempt: appliedResult?.applicationAttempt,
+      storagePath: storage.storagePath
+    };
+  });
 }
 
 export async function persistIngestedJobPosting(
@@ -280,14 +281,6 @@ export async function applyToStoredJob(
   };
 }
 
-function resolvePipelineStorage(options: SingleJobPipelineOptions): PipelineStorage {
-  return (
-    options.storage ??
-    createSqliteStorage({
-      storagePath: options.storagePath
-    })
-  );
-}
 
 async function ensureApplicationRecord(
   storage: PipelineStorage,

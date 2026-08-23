@@ -56,8 +56,8 @@ const config = validateAutomationDeskConfig({
 });
 
 const profile: CandidateProfile = {
-  id: "profile:abdullah",
-  fullName: "Abdullah Fageeh",
+  id: "profile:synthetic-candidate",
+  fullName: "Avery Morgan",
   country: "Saudi Arabia",
   headline: "Live event operations professional",
   targetRoleFamilies: ["venue operations", "event production", "site management"],
@@ -94,9 +94,13 @@ function buildGreenhouseJob(overrides: Partial<JobPosting> = {}): JobPosting {
   };
 }
 
-test("runs one trusted daily automation cycle and queues only qualified roles", async () => {
+test("runs one trusted daily automation cycle and queues only qualified roles", async (t) => {
   const dir = makeTempDir();
   const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
 
   const result = await runDailyAutomationDesk({
     storage,
@@ -124,12 +128,15 @@ test("runs one trusted daily automation cycle and queues only qualified roles", 
   assert.equal(result.queued[0]?.job.id, "greenhouse:dmgevents:123");
   assert.equal((await storage.listQueueJobs()).length, 1);
 
-  rmSync(dir, { recursive: true });
 });
 
-test("returns the existing result instead of creating a second run for the same daily key", async () => {
+test("returns the existing result instead of creating a second run for the same daily key", async (t) => {
   const dir = makeTempDir();
   const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
   const options = {
     storage,
     config,
@@ -145,13 +152,15 @@ test("returns the existing result instead of creating a second run for the same 
   assert.equal(second.skipped, true);
   assert.equal(second.run.id, first.run.id);
   assert.equal((await storage.listQueueJobs()).length, 1);
-
-  rmSync(dir, { recursive: true });
 });
 
-test("runs again on the same day when the effective automation configuration changes", async () => {
+test("runs again on the same day when the effective automation configuration changes", async (t) => {
   const dir = makeTempDir();
   const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
   const now = "2026-08-15T08:00:00.000Z";
 
   const first = await runDailyAutomationDesk({
@@ -180,13 +189,15 @@ test("runs again on the same day when the effective automation configuration cha
   assert.equal(second.skipped, false);
   assert.notEqual(second.run.id, first.run.id);
   assert.notEqual(second.run.idempotencyKey, first.run.idempotencyKey);
-
-  rmSync(dir, { recursive: true });
 });
 
-test("blocks a new role when the employer cooldown is active from a prior application", async () => {
+test("blocks a new role when the employer cooldown is active from a prior application", async (t) => {
   const dir = makeTempDir();
   const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
 
   await storage.upsertApplicationRecord({
     id: "application:prior-dmg-role",
@@ -216,13 +227,15 @@ test("blocks a new role when the employer cooldown is active from a prior applic
 
   assert.equal(result.queued.length, 0);
   assert.equal(result.reviewRequired[0]?.reason, "employer-cooldown-active");
-
-  rmSync(dir, { recursive: true });
 });
 
-test("uses a zero daily cap as a safe pause without queueing roles", async () => {
+test("uses a zero daily cap as a safe pause without queueing roles", async (t) => {
   const dir = makeTempDir();
   const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
 
   const result = await runDailyAutomationDesk({
     storage,
@@ -242,6 +255,4 @@ test("uses a zero daily cap as a safe pause without queueing roles", async () =>
   assert.equal(result.run.status, "completed");
   assert.equal(result.run.counts.queued, 0);
   assert.equal(result.queued.length, 0);
-
-  rmSync(dir, { recursive: true });
 });

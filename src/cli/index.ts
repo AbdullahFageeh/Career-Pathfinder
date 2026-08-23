@@ -810,7 +810,7 @@ function readCliErrorMessage(error: unknown): string {
 
 function formatHelpText(): string {
   return [
-    "Job Project scaffold ready.",
+    "Career Pathfinder ready.",
     "",
     "Usage:",
     formatUsageText(),

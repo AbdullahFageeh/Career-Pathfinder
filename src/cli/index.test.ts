@@ -145,14 +145,14 @@ const sampleApplicationRecord: ApplicationRecord = {
 const resolvedStoragePath = resolve("data/pipeline-store.sqlite");
 const resolvedReferencePath = resolve("APPLICATION_REFERENCE.md");
 const resolvedRenderOutputDir = resolve("artifacts/resumes");
-const resolvedResumePath = resolve("artifacts/resumes/abdullah-resume.pdf");
+const resolvedResumePath = resolve("artifacts/resumes/candidate-resume.pdf");
 const resolvedBrowserExecutablePath = resolve(
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 );
 
 const sampleProfile = {
-  id: "abdullah-seed",
-  fullName: "Abdullah Fageeh",
+  id: "candidate-seed",
+  fullName: "Avery Morgan",
   country: "Saudi Arabia",
   headline: "Installation Manager | Site Operations",
   targetRoleFamilies: ["Site Operations"],
@@ -189,7 +189,7 @@ test("runCli pipeline:single forwards apply options and prints an apply summary"
       "--render-output-dir",
       "artifacts/resumes",
       "--profile-id",
-      "abdullah",
+      "candidate-profile",
       "--apply-mode",
       "supervised",
       "--gdpr-consent",
@@ -215,7 +215,7 @@ test("runCli pipeline:single forwards apply options and prints an apply summary"
   assert.deepEqual(capturedOptions, {
     storagePath: resolvedStoragePath,
     referencePath: resolvedReferencePath,
-    profileId: "abdullah",
+    profileId: "candidate-profile",
     renderOptions: {
       outputDir: resolvedRenderOutputDir
     },
@@ -250,7 +250,7 @@ test("runCli greenhouse:hosted:prefill loads the profile, forwards browser optio
       "--reference-path",
       "APPLICATION_REFERENCE.md",
       "--resume-path",
-      "artifacts/resumes/abdullah-resume.pdf",
+      "artifacts/resumes/candidate-resume.pdf",
       "--browser-executable-path",
       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       "--headless",

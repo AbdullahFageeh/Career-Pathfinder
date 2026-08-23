@@ -68,7 +68,7 @@ const tailoredResume: TailoredResume = {
 
 test("prepareJobApplicationSubmission falls back to review when the Greenhouse API key is missing", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-prepare-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
   const record = createAtsReadyRecord(greenhouseJob);
 
@@ -101,7 +101,7 @@ test("prepareJobApplicationSubmission falls back to review when the Greenhouse A
 
 test("prepareJobApplicationSubmission builds a ready Greenhouse request when required data is available", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-ready-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
   const record = createAtsReadyRecord(greenhouseJob);
   let getCount = 0;
@@ -197,9 +197,9 @@ test("prepareJobApplicationSubmission builds a ready Greenhouse request when req
 
   assert.equal(result.prepared.platform, "greenhouse");
   assert.equal(result.prepared.uploadedDocuments[0]?.path, resumePath);
-  assert.equal(readFieldValue(result.prepared.fields, "first_name"), "Abdullah");
-  assert.equal(readFieldValue(result.prepared.fields, "last_name"), "Fageeh");
-  assert.equal(readFieldValue(result.prepared.fields, "email"), "abdullah@example.com");
+  assert.equal(readFieldValue(result.prepared.fields, "first_name"), "Avery");
+  assert.equal(readFieldValue(result.prepared.fields, "last_name"), "Morgan");
+  assert.equal(readFieldValue(result.prepared.fields, "email"), "avery@example.test");
   assert.equal(readFieldValue(result.prepared.fields, "work_authorization"), "yes");
   assert.equal(readFieldValue(result.prepared.fields, "why_fit"), tailoredResume.tailoredSummary);
   assert.equal(readFieldValue(result.prepared.fields, "mapped_url_token"), "test-source");
@@ -208,7 +208,7 @@ test("prepareJobApplicationSubmission builds a ready Greenhouse request when req
 
 test("prepareJobApplicationSubmission skips an optional multi-field cover letter question", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-cover-letter-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
   const record = createAtsReadyRecord(greenhouseJob);
 
@@ -290,7 +290,7 @@ test("prepareJobApplicationSubmission skips an optional multi-field cover letter
 
 test("prepareJobApplicationSubmission accepts a multi-select option label that contains a comma", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-multi-select-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = {
     ...createCandidateProfile(resumePath),
     recurringAnswers: [
@@ -374,7 +374,7 @@ test("prepareJobApplicationSubmission accepts a multi-select option label that c
 
 test("prepareJobApplicationSubmission allows a retry after a review-needed attempt", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-retry-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
   const recordWithReviewNeededAttempt = {
     ...createAtsReadyRecord(greenhouseJob),
@@ -458,7 +458,7 @@ test("prepareJobApplicationSubmission allows a retry after a review-needed attem
 
 test("submitJobApplication records a submitted Greenhouse attempt and advances the tracker record", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-submit-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
   const record = createAtsReadyRecord(greenhouseJob);
   let getCount = 0;
@@ -485,7 +485,7 @@ test("submitJobApplication records a submitted Greenhouse attempt and advances t
 
       const body = init?.body;
       assert.ok(body instanceof FormData);
-      assert.equal(body.get("first_name"), "Abdullah");
+      assert.equal(body.get("first_name"), "Avery");
       assert.equal(body.get("work_authorization"), "yes");
       assert.equal(body.get("mapped_url_token"), "test-source");
       assert.ok(body.get("resume") instanceof File);
@@ -563,7 +563,7 @@ test("submitJobApplication records a submitted Greenhouse attempt and advances t
 
 test("submitJobApplication falls back to review-needed when the questionnaire requires unsupported location data", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-location-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
   const record = createAtsReadyRecord(greenhouseJob);
 
@@ -606,10 +606,10 @@ test("submitJobApplication falls back to review-needed when the questionnaire re
 
 function createCandidateProfile(resumePath: string): CandidateProfile {
   return {
-    id: "abdullah-seed",
-    fullName: "Abdullah Fageeh",
-    preferredName: "Abdullah",
-    email: "abdullah@example.com",
+    id: "candidate-seed",
+    fullName: "Avery Morgan",
+    preferredName: "Avery",
+    email: "avery@example.test",
     phone: "+49 123 4567",
     headline: "Installation Manager | Production Manager | Site Operations",
     targetRoleFamilies: ["Installation Manager", "Production Manager", "Site Operations"],
@@ -690,7 +690,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 test("full-auto Greenhouse preparation requires an explicit structured-channel opt-in", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-full-auto-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
   const record = createAtsReadyRecord(greenhouseJob);
 
@@ -732,7 +732,7 @@ test("full-auto Greenhouse preparation requires an explicit structured-channel o
 
 test("prepareJobApplicationSubmission keeps Workable and Lever roles in review-only mode", async (t) => {
   const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-review-only-"));
-  const resumePath = join(tempDir, "abdullah-resume.pdf");
+  const resumePath = join(tempDir, "candidate-resume.pdf");
   const profile = createCandidateProfile(resumePath);
 
   t.after(async () => {

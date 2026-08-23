@@ -13,8 +13,8 @@ import {
 
 const profileReferenceFixture = `# Job Application Reference
 ## Identity and contact
-- Full legal name: Abdullah Fageeh
-- Preferred display name: Abdullah Fageeh
+- Full legal name: Avery Morgan
+- Preferred display name: Avery Morgan
 
 ## Professional headline
 - Default headline: Installation Manager | Production Manager | Site Operations
@@ -44,15 +44,15 @@ const profileReferenceFixture = `# Job Application Reference
 - Fundamentals of Artificial Intelligence, SDAIA (2025)
 
 ## Documents and file references
-- Master CV PDF: /Users/abdullah/Desktop/Abdullah_Fageeh_CV_2026.pdf
+- Master CV PDF: /Users/avery/Desktop/Avery_Morgan_CV_2026.pdf
 `;
 
 function createApplyReadyProfileReferenceFixture(resumePath: string): string {
   return `# Job Application Reference
 ## Identity and contact
-- Full legal name: Abdullah Fageeh
-- Preferred display name: Abdullah Fageeh
-- Email: abdullah@example.com
+- Full legal name: Avery Morgan
+- Preferred display name: Avery Morgan
+- Email: avery@example.test
 - Phone: +49 123 4567
 
 ## Professional headline
@@ -125,8 +125,10 @@ test("runPipelineQueueOnce processes a queued job through ingest, tailor, render
   const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
   const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
   const outputDir = join(tempDir, "artifacts", "resumes");
+  let storage: ReturnType<typeof createSqliteStorage> | undefined;
 
   t.after(async () => {
+    await storage?.close();
     await rm(tempDir, { recursive: true, force: true });
   });
 
@@ -154,7 +156,7 @@ test("runPipelineQueueOnce processes a queued job through ingest, tailor, render
     storagePath,
     workerId: "worker:test-second"
   });
-  const storage = createSqliteStorage({ storagePath });
+  storage = createSqliteStorage({ storagePath });
   const snapshot = await storage.readSnapshot();
   const applicationRecord = await storage.getApplicationRecordByJobId(siteManagerJob.id);
   const renderedArtifact = await readFile(
@@ -176,7 +178,7 @@ test("runPipelineQueueOnce processes a queued job through ingest, tailor, render
     ["ingest", "render", "score-ats", "tailor"]
   );
   assert.ok(Object.values(snapshot.queueJobs).every((queueJob) => queueJob.state === "completed"));
-  assert.match(renderedArtifact, /<h1>Abdullah Fageeh<\/h1>/);
+  assert.match(renderedArtifact, /<h1>Avery Morgan<\/h1>/);
   assert.match(renderedArtifact, /Site Manager \(m\/w\/d\)/);
 });
 
@@ -185,8 +187,10 @@ test("enqueueSingleJobPipelineRun allows a completed job to be re-enqueued as a 
   const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
   const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
   const outputDir = join(tempDir, "artifacts", "resumes");
+  let storage: ReturnType<typeof createSqliteStorage> | undefined;
 
   t.after(async () => {
+    await storage?.close();
     await rm(tempDir, { recursive: true, force: true });
   });
 
@@ -210,7 +214,7 @@ test("enqueueSingleJobPipelineRun allows a completed job to be re-enqueued as a 
     storagePath,
     workerId: "worker:second-run"
   });
-  const storage = createSqliteStorage({ storagePath });
+  storage = createSqliteStorage({ storagePath });
   const snapshot = await storage.readSnapshot();
 
   assert.equal(firstRun.claimed, 4);
@@ -235,11 +239,13 @@ test("runPipelineQueueOnce optionally processes the apply stage after ATS scorin
   const referencePath = join(tempDir, "APPLICATION_REFERENCE.md");
   const storagePath = join(tempDir, "data", "pipeline-store.sqlite");
   const outputDir = join(tempDir, "artifacts", "resumes");
-  const resumePath = join(tempDir, "Abdullah_Fageeh_CV.pdf");
+  const resumePath = join(tempDir, "Avery_Morgan_CV.pdf");
   let getCount = 0;
   let postCount = 0;
+  let storage: ReturnType<typeof createSqliteStorage> | undefined;
 
   t.after(async () => {
+    await storage?.close();
     await rm(tempDir, { recursive: true, force: true });
   });
 
@@ -254,7 +260,7 @@ test("runPipelineQueueOnce optionally processes the apply stage after ATS scorin
       const body = init?.body;
 
       assert.ok(body instanceof FormData);
-      assert.equal(body.get("first_name"), "Abdullah");
+      assert.equal(body.get("first_name"), "Avery");
       assert.equal(body.get("work_authorization"), "yes");
       assert.ok(body.get("resume") instanceof File);
 
@@ -340,7 +346,7 @@ test("runPipelineQueueOnce optionally processes the apply stage after ATS scorin
     greenhouseJobBoardApiKey: "test-key",
     applyFetchImpl: fetchImpl
   });
-  const storage = createSqliteStorage({ storagePath });
+  storage = createSqliteStorage({ storagePath });
   const snapshot = await storage.readSnapshot();
   const applicationRecord = await storage.getApplicationRecordByJobId(greenhouseSiteManagerJob.id);
 

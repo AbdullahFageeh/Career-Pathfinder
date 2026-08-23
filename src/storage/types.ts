@@ -31,6 +31,7 @@ export type PipelineStorageSnapshot = {
 
 export type PipelineStorage = {
   storagePath: string;
+  close: () => Promise<void>;
   readSnapshot: () => Promise<PipelineStorageSnapshot>;
   getJobPosting: (jobId: string) => Promise<JobPosting | undefined>;
   listJobPostings: () => Promise<JobPosting[]>;
