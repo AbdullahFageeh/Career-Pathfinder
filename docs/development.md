@@ -64,6 +64,15 @@ export LLM_API_KEY="<secret>"
 
 Tests, typechecking, builds, deterministic letters, local scoring, and review-queue generation do not require credentials.
 
+## GitHub Actions deployment on merge
+
+The repository includes `.github/workflows/deploy.yml`, which runs on pushes to `main` (including merged pull requests) and triggers a production deployment.
+
+Configure these repository settings in GitHub:
+
+- `DEPLOY_WEBHOOK_URL` secret: required. The workflow sends a `POST` request to this URL after checks pass.
+- `PRODUCTION_URL` variable: optional. If set, it is attached to the deployment environment URL in the workflow run.
+
 ## Commands
 
 - `npm run check`: typecheck, build, and run the complete test suite.
