@@ -53,3 +53,27 @@ jobs:
           if [ -n "$PRODUCTION_URL" ]; then
             echo "production_url=$PRODUCTION_URL" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Verify production readiness
+        if: ${{ vars.PRODUCTION_URL != '' }}
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          HEALTH_URL="${PRODUCTION_URL%/}/health"
+          echo "Polling $HEALTH_URL for readiness..."
+
+          for attempt in $(seq 1 30); do
+            STATUS_CODE="$(curl --silent --show-error --output /tmp/health.json --write-out '%{http_code}' "$HEALTH_URL" || true)"
+
+            if [ "$STATUS_CODE" = "200" ]; then
+              echo "Production health check passed."
+              cat /tmp/health.json || true
+              exit 0
+            fi
+
+            echo "Attempt $attempt/30 returned HTTP $STATUS_CODE. Retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "Production health check did not pass in time." >&2
+          exit 1

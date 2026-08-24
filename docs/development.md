@@ -71,7 +71,15 @@ The repository includes `.github/workflows/deploy.yml`, which runs on pushes to 
 Configure these repository settings in GitHub:
 
 - `DEPLOY_WEBHOOK_URL` secret: required. The workflow sends a `POST` request to this URL after checks pass.
-- `PRODUCTION_URL` variable: optional. If set, it is attached to the deployment environment URL in the workflow run.
+- `PRODUCTION_URL` variable: optional. If set, it is attached to the deployment environment URL in the workflow run and used for a post-deploy readiness check against `${PRODUCTION_URL}/health`.
+
+## Render runtime contract
+
+- `npm start` now runs `node dist/server.js`.
+- The server binds to `0.0.0.0` and `PORT` (default `10000`).
+- Health endpoint: `GET /health` returns `200` with JSON status.
+- Version endpoint: `GET /version` returns service name and version metadata.
+- CLI entrypoint is preserved as `npm run start:cli -- <command>`.
 
 ## Commands
 
@@ -80,7 +88,8 @@ Configure these repository settings in GitHub:
 - `npm test`: build and execute `dist/**/*.test.js`.
 - `npm run build`: compile `src/` into `dist/`.
 - `npm run clean`: remove generated `dist/` output.
-- `npm start -- help`: print the compiled CLI help after a build.
+- `npm start`: start the HTTP service used by Render.
+- `npm run start:cli -- --help`: print the compiled CLI help after a build.
 
 The project does not currently define a formatter or linter. Follow the existing two-space TypeScript style and rely on strict TypeScript plus tests until a formatter or linter is deliberately adopted.
 
