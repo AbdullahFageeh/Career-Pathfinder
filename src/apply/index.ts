@@ -428,6 +428,24 @@ const greenhouseApplicationAdapter: ApplicationAdapter = {
         });
       }
 
+      const confirmation = readSubmissionConfirmation(responseBody);
+
+      if (!confirmation.confirmed) {
+        return createSubmissionAttempt(prepared.applicationRecord, {
+          attemptedAt: normalizeTimestamp(options.now),
+          mode: prepared.mode,
+          platform: "greenhouse",
+          outcome: "uncertain",
+          method: "greenhouse-job-board-api",
+          targetUrl: prepared.targetUrl,
+          submissionUrl: prepared.submissionUrl,
+          uploadedDocuments: prepared.uploadedDocuments,
+          responseStatus: response.status,
+          failureReason:
+            "Greenhouse returned a successful HTTP response, but no explicit application confirmation was found. Review the employer portal before retrying."
+        });
+      }
+
       return createSubmissionAttempt(prepared.applicationRecord, {
         attemptedAt: normalizeTimestamp(options.now),
         mode: prepared.mode,
@@ -438,7 +456,11 @@ const greenhouseApplicationAdapter: ApplicationAdapter = {
         submissionUrl: prepared.submissionUrl,
         uploadedDocuments: prepared.uploadedDocuments,
         responseStatus: response.status,
-        confirmationMessage: readConfirmationMessage(responseBody)
+        confirmationMessage: confirmation.message,
+        confirmationEvidence: {
+          kind: "api-response",
+          reference: confirmation.reference
+        }
       });
     } catch (error) {
       return createSubmissionAttempt(prepared.applicationRecord, {
@@ -1083,22 +1105,45 @@ async function readResponseBody(response: Response): Promise<unknown> {
   return response.text();
 }
 
-function readConfirmationMessage(responseBody: unknown): string {
-  if (typeof responseBody === "string" && responseBody.trim().length > 0) {
-    return responseBody.trim();
+function readSubmissionConfirmation(responseBody: unknown): {
+  confirmed: boolean;
+  message: string;
+  reference: string;
+} {
+  if (typeof responseBody === "string") {
+    const value = responseBody.trim();
+    const confirmed = /application|submitted|received|success|thank you|thank-you/i.test(value);
+    return {
+      confirmed,
+      message: value || "Greenhouse returned an empty response.",
+      reference: value || "empty-response"
+    };
   }
 
   if (isRecord(responseBody)) {
-    if (typeof responseBody.message === "string" && responseBody.message.trim().length > 0) {
-      return responseBody.message.trim();
-    }
+    const message = typeof responseBody.message === "string" ? responseBody.message.trim() : "";
+    const status = typeof responseBody.status === "string" ? responseBody.status.trim() : "";
+    const applicationId =
+      responseBody.application_id ?? responseBody.applicationId ?? responseBody.id;
+    const confirmed =
+      Boolean(applicationId) ||
+      /^(ok|success|submitted|received|accepted)$/i.test(status) ||
+      /application|submitted|received|success|thank you|thank-you/i.test(message);
 
-    if (typeof responseBody.status === "string" && responseBody.status.trim().length > 0) {
-      return `Greenhouse application submitted (${responseBody.status.trim()}).`;
-    }
+    return {
+      confirmed,
+      message:
+        message ||
+        (status ? `Greenhouse application submitted (${status}).` : "Greenhouse returned a response."),
+      reference: applicationId ? `application-id:${String(applicationId)}` : status || message || "json-response"
+    };
   }
 
-  return "Application submitted via Greenhouse Job Board API.";
+  return {
+    confirmed: false,
+    message: "Greenhouse returned no explicit application confirmation.",
+    reference: "unrecognized-response"
+  };
 }
 
 function readFailureReason(responseBody: unknown, statusCode: number): string {

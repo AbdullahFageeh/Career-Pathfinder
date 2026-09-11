@@ -5,6 +5,7 @@
   "selectionProfile": "psychometric-first",
   "includeRemote": false,
   "remoteScope": "compatible",
+  "sourceFreshnessDays": 21,
   "autoSubmitEnabled": false,
   "caps": {
     "dailyApplications": 4,

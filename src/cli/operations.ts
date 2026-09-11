@@ -34,7 +34,13 @@ import {
 } from "../sources/index.js";
 import { type PipelineStorage, withPipelineStorage } from "../storage/index.js";
 import { buildTailoredResume } from "../tailor/index.js";
-import type { ApplicationRecord, CandidateProfile, JobPosting } from "../shared/contracts.js";
+import { recordApplicationOutcome } from "../tracker/index.js";
+import type {
+  ApplicationOutcome,
+  ApplicationRecord,
+  CandidateProfile,
+  JobPosting
+} from "../shared/contracts.js";
 import { ingestJobPosting, type IngestJobPostingInput } from "../ingest/index.js";
 
 export type ShortlistOperationOptions = {
@@ -544,6 +550,47 @@ export async function runReportOperation(
       markdown,
       ...(outputPath ? { outputPath } : {})
     };
+  });
+}
+
+export type OutcomeOperationOptions = {
+  applicationId?: string;
+  jobId?: string;
+  outcome: ApplicationOutcome;
+  note?: string;
+  storagePath?: string;
+  now?: string;
+  storage?: PipelineStorage;
+};
+
+export type OutcomeOperationResult = {
+  record: ApplicationRecord;
+};
+
+/** Records an interview, offer, rejection, withdrawal, or no-response outcome. */
+export async function runOutcomeOperation(
+  options: OutcomeOperationOptions
+): Promise<OutcomeOperationResult> {
+  if (!options.applicationId && !options.jobId) {
+    throw new Error("Provide either applicationId or jobId to record an outcome.");
+  }
+
+  return withPipelineStorage(options, async (storage) => {
+    const record = options.applicationId
+      ? await storage.getApplicationRecord(options.applicationId)
+      : await storage.getApplicationRecordByJobId(options.jobId as string);
+    if (!record) {
+      throw new Error(
+        `No application record was found for ${options.applicationId ? `id "${options.applicationId}"` : `job "${options.jobId}"`}.`
+      );
+    }
+
+    const updated = recordApplicationOutcome(record, options.outcome, {
+      ...(options.now ? { at: options.now } : {}),
+      ...(options.note ? { note: options.note } : {})
+    });
+    await storage.upsertApplicationRecord(updated);
+    return { record: updated };
   });
 }
 

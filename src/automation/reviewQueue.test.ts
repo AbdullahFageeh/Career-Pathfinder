@@ -21,6 +21,7 @@ test("formats queued and review-required roles into an actionable operator repor
         failed: 0
       }
     },
+    sourcesFailed: [{ source: "greenhouse:example", reason: "Request timed out." }],
     queued: [
       {
         job: {
@@ -59,4 +60,6 @@ test("formats queued and review-required roles into an actionable operator repor
   assert.match(markdown, /86\/100/);
   assert.match(markdown, /unsupported-platform/);
   assert.match(markdown, /Review before applying/);
+  assert.match(markdown, /greenhouse:example/);
+  assert.match(markdown, /Request timed out/);
 });

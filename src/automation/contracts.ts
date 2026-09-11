@@ -2,6 +2,8 @@ import type { AutomationMode, JsonValue } from "../shared/contracts.js";
 
 export const MAX_DAILY_APPLICATION_CAP = 5;
 export const MAX_EMPLOYER_COOLDOWN_DAYS = 365;
+export const DEFAULT_SOURCE_FRESHNESS_DAYS = 21;
+export const MAX_SOURCE_FRESHNESS_DAYS = 90;
 
 export type SourceCapability = "structured-submit" | "prefill-only" | "review-only";
 export type AutomationSourceKind = "greenhouse" | "lever" | "workable" | "company-page" | "job-board" | "manual";
@@ -62,6 +64,8 @@ export type AutomationDeskConfig = {
   includeRemote: boolean;
   /** Compatible remote keeps only jurisdiction-compatible locations; worldwide includes all remote locations for review. */
   remoteScope: "compatible" | "worldwide";
+  /** Maximum age for a discovered posting before it is held for review. */
+  sourceFreshnessDays: number;
   /** Disabled by default; enables only configured structured-channel full-auto submissions. */
   autoSubmitEnabled: boolean;
   caps: ApplicationCapConfig;
@@ -106,6 +110,13 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
   const selectionProfile = readSelectionProfile(value.selectionProfile);
   const includeRemote = readBooleanWithDefault(value.includeRemote, "includeRemote", false);
   const remoteScope = readRemoteScope(value.remoteScope);
+  const sourceFreshnessDays = readIntegerWithDefault(
+    value.sourceFreshnessDays,
+    "sourceFreshnessDays",
+    DEFAULT_SOURCE_FRESHNESS_DAYS,
+    1,
+    MAX_SOURCE_FRESHNESS_DAYS
+  );
   const autoSubmitEnabled = readBooleanWithDefault(value.autoSubmitEnabled, "autoSubmitEnabled", false);
   const parsedCaps: ApplicationCapConfig = {
     dailyApplications: requireIntegerInRange(caps.dailyApplications, "dailyApplications", 0, MAX_DAILY_APPLICATION_CAP),
@@ -146,6 +157,7 @@ export function validateAutomationDeskConfig(input: unknown): AutomationDeskConf
     selectionProfile,
     includeRemote,
     remoteScope,
+    sourceFreshnessDays,
     autoSubmitEnabled,
     caps: parsedCaps,
     thresholds: parsedThresholds,
@@ -288,6 +300,18 @@ function requireIntegerInRange(value: unknown, label: string, minimum: number, m
     throw new Error(`${label} must be an integer between ${minimum} and ${maximum}.`);
   }
   return value;
+}
+
+function readIntegerWithDefault(
+  value: unknown,
+  label: string,
+  defaultValue: number,
+  minimum: number,
+  maximum: number
+): number {
+  return value === undefined
+    ? defaultValue
+    : requireIntegerInRange(value, label, minimum, maximum);
 }
 
 function requireEnum<T extends readonly string[]>(value: unknown, label: string, values: T): T[number] {

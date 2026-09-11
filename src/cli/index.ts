@@ -11,6 +11,7 @@ import {
   runCoverLetterOperation,
   runDiscoverOperation,
   runFollowUpOperation,
+  runOutcomeOperation,
   runReportOperation,
   runResumeOperation,
   runReviewPacketOperation,
@@ -19,7 +20,7 @@ import {
 import type { ApplicationDocumentFormat } from "../render/index.js";
 import type { CoverLetterTone } from "../letters/index.js";
 import { architectureSummary } from "../shared/modules.js";
-import type { AutomationMode } from "../shared/contracts.js";
+import type { ApplicationOutcome, AutomationMode } from "../shared/contracts.js";
 import { runDailyAutomationOperation } from "../automation/operations.js";
 import {
   enqueueSingleJobPipelineRun,
@@ -48,6 +49,7 @@ type CliDependencies = {
   runReviewPacketOperation: typeof runReviewPacketOperation;
   runCoverLetterOperation: typeof runCoverLetterOperation;
   runFollowUpOperation: typeof runFollowUpOperation;
+  runOutcomeOperation: typeof runOutcomeOperation;
   runReportOperation: typeof runReportOperation;
   runDiscoverOperation: typeof runDiscoverOperation;
   runDailyAutomationOperation: typeof runDailyAutomationOperation;
@@ -76,6 +78,7 @@ const DEFAULT_CLI_DEPENDENCIES: CliDependencies = {
   runReviewPacketOperation,
   runCoverLetterOperation,
   runFollowUpOperation,
+  runOutcomeOperation,
   runReportOperation,
   runDiscoverOperation,
   runDailyAutomationOperation
@@ -121,6 +124,8 @@ export async function runCli(
       return runCoverLetterCli(args, deps, io);
     case "followups":
       return runFollowUpsCli(args, deps, io);
+    case "outcome":
+      return runOutcomeCli(args, deps, io);
     case "report":
       return runReportCli(args, deps, io);
     case "discover:greenhouse":
@@ -262,7 +267,10 @@ async function runGreenhouseHostedPrefillCli(
       headless,
       keepOpen,
       resumePath: resolveOptionalPath(readOptionalOption(options, "resume-path")),
-      timeoutMs: readOptionalNumberOption(options, "timeout-ms")
+      timeoutMs: readOptionalNumberOption(options, "timeout-ms"),
+      ...(resolveOptionalPath(readOptionalOption(options, "trace-path"))
+        ? { tracePath: resolveOptionalPath(readOptionalOption(options, "trace-path")) }
+        : {})
     });
 
     const outputLines = [
@@ -276,6 +284,7 @@ async function runGreenhouseHostedPrefillCli(
         ? "- ready for manual review: yes"
         : `- missing: ${result.missingRequiredFields.join(" | ")}`,
       result.keptBrowserOpen ? "- browser kept open: yes" : undefined,
+      result.tracePath ? `- trace: ${result.tracePath}` : undefined,
       !headless && !result.keptBrowserOpen
         ? "- note: rerun with --keep-open to review and submit manually in the browser."
         : undefined
@@ -552,6 +561,39 @@ async function runReportCli(
   }
 }
 
+async function runOutcomeCli(
+  args: string[],
+  deps: CliDependencies,
+  io: CliOutput
+): Promise<number> {
+  try {
+    const options = parseCliOptions(args);
+    const outcome = readApplicationOutcomeOption(options);
+    const result = await deps.runOutcomeOperation({
+      applicationId: readOptionalOption(options, "application-id"),
+      jobId: readOptionalOption(options, "job-id"),
+      outcome,
+      note: readOptionalOption(options, "note"),
+      storagePath: resolveOptionalPath(readOptionalOption(options, "storage-path")),
+      now: readOptionalOption(options, "at")
+    });
+
+    io.stdout(
+      [
+        "Application outcome recorded.",
+        `- role: ${result.record.jobTitle}`,
+        `- company: ${result.record.company}`,
+        `- outcome: ${result.record.outcome}`,
+        `- recorded at: ${result.record.outcomeAt}`
+      ].join("\n")
+    );
+    return 0;
+  } catch (error) {
+    io.stderr(readCliErrorMessage(error));
+    return 1;
+  }
+}
+
 async function runDailyAutomationCli(
   args: string[],
   deps: CliDependencies,
@@ -733,6 +775,14 @@ function readApplyModeOption(options: ParsedCliOptions): AutomationMode | undefi
   throw new Error("Option --apply-mode must be one of observe, supervised, or full-auto.");
 }
 
+function readApplicationOutcomeOption(options: ParsedCliOptions): ApplicationOutcome {
+  const value = requireOption(options, "outcome");
+  if (["rejected", "interview", "offer", "withdrawn", "no-response"].includes(value)) {
+    return value as ApplicationOutcome;
+  }
+  throw new Error("Option --outcome must be one of rejected, interview, offer, withdrawn, or no-response.");
+}
+
 function readToneOption(options: ParsedCliOptions): CoverLetterTone | undefined {
   const value = readOptionalOption(options, "tone");
   if (!value) {
@@ -838,11 +888,12 @@ function formatUsageText(): string {
     "  node dist/index.js review:packets [--job-id <id>] [--storage-path <path>] [--reference-path <path>] [--profile-id <id>] [--output-dir <dir>] [--formats html,pdf] [--browser-executable-path <path>]",
     "  node dist/index.js letter --input <job.json> [--tone direct|warm|formal] [--recipient <name>] [--company-hook <text>] [--output-dir <dir>] [--formats html,pdf] [--use-llm] [--llm-model <model>]",
     "  node dist/index.js followups [--storage-path <path>] [--offset-days 3,7,14] [--output <file.md>] [--no-schedule]",
+    "  node dist/index.js outcome --outcome rejected|interview|offer|withdrawn|no-response [--application-id <id> | --job-id <id>] [--note <text>] [--at <timestamp>] [--storage-path <path>]",
     "  node dist/index.js report [--storage-path <path>] [--stale-after-days <n>] [--output <file.md>]",
     "  node dist/index.js worker:once [--storage-path <path>] [--worker-id <id>] [--max-jobs <n>]",
     "  node dist/index.js queue:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode observe|supervised|full-auto] [--allow-full-auto] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
     "  node dist/index.js pipeline:single --input <job.json> [--reference-path <path>] [--storage-path <path>] [--render-output-dir <dir>] [--profile-id <id>] [--apply-mode observe|supervised|full-auto] [--allow-full-auto] [--gdpr-consent] [--gdpr-processing-consent] [--gdpr-retention-consent]",
-    "  node dist/index.js greenhouse:hosted:prefill --url <hosted-greenhouse-job-url> [--reference-path <path>] [--resume-path <path>] [--browser-executable-path <path>] [--profile-id <id>] [--headless] [--keep-open] [--timeout-ms <ms>]"
+    "  node dist/index.js greenhouse:hosted:prefill --url <hosted-greenhouse-job-url> [--reference-path <path>] [--resume-path <path>] [--browser-executable-path <path>] [--profile-id <id>] [--trace-path <path>] [--headless] [--keep-open] [--timeout-ms <ms>]"
   ].join("\n");
 }
 

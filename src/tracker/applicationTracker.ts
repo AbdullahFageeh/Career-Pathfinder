@@ -1,5 +1,6 @@
 import type {
   ApplicationFollowUp,
+  ApplicationOutcome,
   ApplicationRecord,
   ApplicationSubmissionAttempt,
   ApplicationStatus,
@@ -63,6 +64,11 @@ export type FollowUpInput = {
   reason: string;
   note?: string;
   createdAt?: string;
+};
+
+export type ApplicationOutcomeOptions = {
+  at?: string;
+  note?: string;
 };
 
 export function createApplicationRecord(
@@ -255,6 +261,23 @@ export function addWorkerDecision(
     ],
     updatedAt: createdAt
   };
+}
+
+/** Records the real-world result without pretending that a closed record was a success. */
+export function recordApplicationOutcome(
+  record: ApplicationRecord,
+  outcome: ApplicationOutcome,
+  options: ApplicationOutcomeOptions = {}
+): ApplicationRecord {
+  const outcomeAt = options.at ?? new Date().toISOString();
+  const nextRecord: ApplicationRecord = {
+    ...record,
+    outcome,
+    outcomeAt,
+    updatedAt: outcomeAt
+  };
+
+  return options.note ? addApplicationNote(nextRecord, options.note, { at: outcomeAt }) : nextRecord;
 }
 
 export function scheduleFollowUp(

@@ -1,5 +1,5 @@
-import { access } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { access, mkdir } from "node:fs/promises";
+import { dirname, join, extname } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 
@@ -53,6 +53,8 @@ export type HostedGreenhousePrefillOptions = {
   headless?: boolean;
   keepOpen?: boolean;
   resumePath?: string;
+  /** Optional Playwright trace written only when the caller explicitly asks for it. */
+  tracePath?: string;
   timeoutMs?: number;
 };
 
@@ -64,6 +66,7 @@ export type HostedGreenhousePrefillResult = {
   missingRequiredFields: string[];
   readyForManualReview: boolean;
   keptBrowserOpen: boolean;
+  tracePath?: string;
 };
 
 export async function prefillHostedGreenhouseApplication(
@@ -90,14 +93,20 @@ export async function prefillHostedGreenhouseApplication(
     executablePath: browserExecutablePath,
     headless
   });
+  const context = await browser.newContext({
+    viewport: {
+      width: 1440,
+      height: 2200
+    }
+  });
+  const tracePath = options.tracePath?.trim();
+
+  if (tracePath) {
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+  }
 
   try {
-    const page = await browser.newPage({
-      viewport: {
-        width: 1440,
-        height: 2200
-      }
-    });
+    const page = await context.newPage();
 
     await openHostedGreenhouseForm(page, targetUrl, timeoutMs);
 
@@ -204,9 +213,15 @@ export async function prefillHostedGreenhouseApplication(
         left.localeCompare(right)
       ),
       readyForManualReview: missingRequiredFields.size === 0,
-      keptBrowserOpen: keepOpen
+      keptBrowserOpen: keepOpen,
+      ...(tracePath ? { tracePath } : {})
     };
   } finally {
+    if (tracePath) {
+      await mkdir(dirname(tracePath), { recursive: true });
+      await context.tracing.stop({ path: tracePath });
+    }
+    await context.close();
     await browser.close();
   }
 }
@@ -440,7 +455,7 @@ async function fillHostedTextField(
   const answer = resolveHostedGreenhouseFieldValue(descriptor, profile, answerMap);
 
   if (typeof answer === "string" && answer.trim().length > 0) {
-    await page.locator(`[id="${descriptor.id}"]`).fill(answer);
+    await (await resolveHostedFieldLocator(page, descriptor)).fill(answer);
     filledFields.add(descriptor.cleanLabel);
     missingRequiredFields.delete(descriptor.cleanLabel);
     return;
@@ -473,7 +488,7 @@ async function fillHostedCountryField(
     return;
   }
 
-  const countryInput = page.locator(`#${descriptor.id}`);
+  const countryInput = await resolveHostedFieldLocator(page, descriptor);
 
   await countryInput.click();
   await countryInput.fill(answer);
@@ -596,6 +611,23 @@ function splitNameParts(value: string | undefined): string[] {
 
 function cleanFieldLabel(value: string): string {
   return value.replace(/\s+/g, " ").replace(/\*/g, " ").trim();
+}
+
+/**
+ * Prefer the label exposed to a user, then fall back to the generated id used
+ * by older hosted forms. This survives harmless DOM id changes while keeping
+ * the deterministic fallback for forms that omit accessible labels.
+ */
+async function resolveHostedFieldLocator(
+  page: Page,
+  descriptor: Pick<HostedGreenhouseFieldDescriptor, "id" | "label" | "cleanLabel">
+) {
+  const byLabel = page.getByLabel(descriptor.cleanLabel, { exact: false });
+  if ((await byLabel.count()) > 0) {
+    return byLabel.first();
+  }
+
+  return page.locator(`[id="${descriptor.id}"]`);
 }
 
 function normalizeAnswerKey(value: string): string {

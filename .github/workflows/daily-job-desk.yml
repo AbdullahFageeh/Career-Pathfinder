@@ -61,7 +61,10 @@ jobs:
         run: npm run automation:run -- --config ./automation.config.json --reference-path ./APPLICATION_REFERENCE.md --storage-path ./data/pipeline-store.sqlite --output ./artifacts/automation-review.md
 
       - name: Prepare queued roles
-        run: npm run worker:once -- --storage-path ./data/pipeline-store.sqlite --max-jobs 10
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          npm run worker:once -- --storage-path ./data/pipeline-store.sqlite --max-jobs 10 | tee artifacts/worker-report.txt
 
       - name: Generate review packets
         run: npm run review:packets -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output-dir ./artifacts/review --formats html
@@ -71,14 +74,32 @@ jobs:
           npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md
           npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md
 
+      - name: Add a small run summary
+        if: always()
+        run: |
+          {
+            echo "## Daily job desk"
+            echo ""
+            echo "Run: `${GITHUB_RUN_NUMBER}`"
+            echo "Commit: `${GITHUB_SHA}`"
+            if [ -f artifacts/automation-review.md ]; then
+              echo ""
+              echo "The full safe summary is available in the workflow artifact."
+              sed -n '/## Run summary/,/## Queued for preparation/p' artifacts/automation-review.md | head -20
+            else
+              echo "The desk did not produce a summary; inspect the failed step above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload daily desk output
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: daily-job-desk-${{ github.run_number }}
           path: |
             artifacts/automation-review.md
+            artifacts/worker-report.txt
             artifacts/followups.md
             artifacts/funnel-report.md
-            artifacts/review/**
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7

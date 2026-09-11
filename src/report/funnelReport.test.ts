@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ApplicationRecord, ApplicationStatus, JobPosting } from "../shared/contracts.js";
 import { ensureFollowUpLadder } from "../followup/index.js";
-import { createApplicationRecord, updateApplicationStatus } from "../tracker/index.js";
+import { createApplicationRecord, recordApplicationOutcome, updateApplicationStatus } from "../tracker/index.js";
 import { buildFunnelReport, formatFunnelReportMarkdown } from "./index.js";
 
 const now = "2026-08-12T09:00:00.000Z";
@@ -125,4 +125,16 @@ test("formatFunnelReportMarkdown lists employers when records exist", () => {
 
   assert.match(markdown, /## Most-worked employers/);
   assert.match(markdown, /Example Events/);
+});
+
+test("buildFunnelReport includes outcome feedback for future selection tuning", () => {
+  const record = recordApplicationOutcome(
+    createApplicationRecord({ job: buildJob(), createdAt: "2026-08-08T09:00:00.000Z" }),
+    "interview",
+    { at: now }
+  );
+  const report = buildFunnelReport([record], { now });
+
+  assert.equal(report.outcomes.find((entry) => entry.outcome === "interview")?.count, 1);
+  assert.match(formatFunnelReportMarkdown(report), /## Outcomes/);
 });

@@ -4,6 +4,7 @@ import type { AutomationRun } from "./contracts.js";
 export type AutomationReviewQueueInput = {
   generatedAt?: string;
   run: AutomationRun;
+  sourcesFailed?: Array<{ source: string; reason: string }>;
   queued: Array<{
     job: JobPosting;
     fitScore: number;
@@ -56,6 +57,17 @@ export function formatAutomationReviewQueueMarkdown(input: AutomationReviewQueue
         `| ${escapeCell(entry.job.title)} | ${escapeCell(entry.job.company)} | ${escapeCell(entry.reason)} | ${escapeCell(readReviewAction(entry.reason))} |`
       );
     }
+  }
+
+  lines.push("", "## Source health", "");
+  if (!input.sourcesFailed || input.sourcesFailed.length === 0) {
+    lines.push("All configured sources responded successfully.");
+  } else {
+    lines.push("| Source | Reason |", "| --- | --- |");
+    for (const failure of input.sourcesFailed) {
+      lines.push(`| ${escapeCell(failure.source)} | ${escapeCell(failure.reason)} |`);
+    }
+    lines.push("", "A source failure can make the shortlist look empty. Verify it before changing fit thresholds.");
   }
 
   return `${lines.join("\n")}\n`;

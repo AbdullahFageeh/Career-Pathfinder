@@ -1,6 +1,7 @@
 export {
   addApplicationNote,
   addWorkerDecision,
+  recordApplicationOutcome,
   applySubmissionAttemptToRecord,
   attachAtsAssessmentToRecord,
   attachTailoredResumeToRecord,
@@ -11,6 +12,7 @@ export {
   updateApplicationStatus,
   type CreateApplicationRecordInput,
   type FollowUpInput,
+  type ApplicationOutcomeOptions,
   type TrackerMutationOptions
 } from "./applicationTracker.js";
 export const trackerModule = {

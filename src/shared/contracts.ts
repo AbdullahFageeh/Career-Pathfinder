@@ -178,6 +178,14 @@ export type ApplicationStatus =
   | "followed-up"
   | "closed";
 
+/** Outcome captured after an employer responds or the search window closes. */
+export type ApplicationOutcome =
+  | "rejected"
+  | "interview"
+  | "offer"
+  | "withdrawn"
+  | "no-response";
+
 export type ApplicationStatusHistoryEntry = {
   status: ApplicationStatus;
   changedAt: string;
@@ -217,7 +225,21 @@ export type ApplicationDocumentReference = {
   source: ApplicationDocumentSource;
 };
 
-export type ApplicationSubmissionOutcome = "submitted" | "review-needed" | "failed";
+/**
+ * The API can return a successful HTTP status without proving that the
+ * application was accepted. Keep that state separate so the tracker never
+ * tells the candidate an application was sent when the evidence is ambiguous.
+ */
+export type ApplicationSubmissionOutcome =
+  | "submitted"
+  | "review-needed"
+  | "uncertain"
+  | "failed";
+
+export type ApplicationSubmissionConfirmation = {
+  kind: "api-response" | "browser-success";
+  reference: string;
+};
 
 export type ApplicationSubmissionMethod = "greenhouse-job-board-api" | "manual-review";
 
@@ -233,6 +255,7 @@ export type ApplicationSubmissionAttempt = {
   uploadedDocuments: ApplicationDocumentReference[];
   responseStatus?: number;
   confirmationMessage?: string;
+  confirmationEvidence?: ApplicationSubmissionConfirmation;
   failureReason?: string;
 };
 
@@ -247,6 +270,8 @@ export type ApplicationRecord = {
   applicationUrl?: string;
   applicationPlatform?: ApplicationPlatform;
   status: ApplicationStatus;
+  outcome?: ApplicationOutcome;
+  outcomeAt?: string;
   atsScore?: number;
   resumeId?: string;
   notes: ApplicationNoteEntry[];

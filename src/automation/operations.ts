@@ -131,6 +131,7 @@ export async function runDailyAutomationOperation(
     const markdown = formatAutomationReviewQueueMarkdown({
       generatedAt: options.now,
       run: run.run,
+      sourcesFailed: discovery.sourcesFailed,
       queued: run.queued.map((entry) => ({
         job: entry.job,
         fitScore: entry.fitScore,

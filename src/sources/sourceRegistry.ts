@@ -1,7 +1,11 @@
-import type { AutomationDeskConfig, AutomationSourceConfig, ReviewReason, SourceCapability } from "../automation/contracts.js";
+import {
+  DEFAULT_SOURCE_FRESHNESS_DAYS,
+  type AutomationDeskConfig,
+  type AutomationSourceConfig,
+  type ReviewReason,
+  type SourceCapability
+} from "../automation/contracts.js";
 import type { JobPosting } from "../shared/contracts.js";
-
-export const DEFAULT_SOURCE_FRESHNESS_DAYS = 21;
 
 export type TrustedSourceAssessment = {
   job: JobPosting;

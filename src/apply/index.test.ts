@@ -553,6 +553,8 @@ test("submitJobApplication records a submitted Greenhouse attempt and advances t
   assert.equal(postCount, 1);
   assert.equal(result.attempt.outcome, "submitted");
   assert.equal(result.attempt.responseStatus, 200);
+  assert.equal(result.attempt.confirmationEvidence?.kind, "api-response");
+  assert.match(result.attempt.confirmationEvidence?.reference ?? "", /ok|Application received/);
   assert.equal(result.applicationRecord.status, "applied");
   assert.equal(result.applicationRecord.submissionAttempts?.length, 1);
   assert.equal(
@@ -602,6 +604,46 @@ test("submitJobApplication falls back to review-needed when the questionnaire re
   assert.equal(result.applicationRecord.status, "ats-passed");
   assert.equal(result.applicationRecord.submissionAttempts?.length, 1);
   assert.match(result.attempt.failureReason ?? "", /required location questions/);
+});
+
+test("submitJobApplication marks an ambiguous successful response as uncertain", async (t) => {
+  const tempDir = await mkdtemp(join(tmpdir(), "job-project-apply-uncertain-"));
+  const resumePath = join(tempDir, "candidate-resume.pdf");
+  const profile = createCandidateProfile(resumePath);
+  const record = createAtsReadyRecord(greenhouseJob);
+
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  await writeFile(resumePath, "resume-pdf-placeholder", "utf8");
+
+  const fetchImpl: typeof fetch = async (input, init) => {
+    if ((init?.method ?? "GET") === "POST") {
+      return jsonResponse({}, 200);
+    }
+
+    return jsonResponse({
+      questions: [
+        {
+          label: "Resume/CV",
+          required: true,
+          fields: [{ name: "resume", type: "input_file" }]
+        }
+      ]
+    });
+  };
+
+  const result = await submitJobApplication(greenhouseJob, record, profile, tailoredResume, {
+    mode: "supervised",
+    greenhouseJobBoardApiKey: "test-key",
+    fetchImpl,
+    now: "2026-06-10T08:10:00.000Z"
+  });
+
+  assert.equal(result.attempt.outcome, "uncertain");
+  assert.equal(result.applicationRecord.status, "ats-passed");
+  assert.match(result.attempt.failureReason ?? "", /explicit application confirmation/);
 });
 
 function createCandidateProfile(resumePath: string): CandidateProfile {

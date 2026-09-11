@@ -13,8 +13,8 @@ Development setup and contribution commands are documented in [`docs/development
 | Discovery | Queries configured public Greenhouse, Lever, and Workable employer career sources. | Keeps Saudi roles by default; remote roles require an explicit config opt-in, trusted public source, and a compatible stated jurisdiction. |
 | Qualification | Ranks saved and discovered roles by title, delivery evidence, location, and recency. | Excludes country-restricted remote roles, Saudi-national-only roles without confirmed eligibility, and roles requiring unverified specialties. |
 | Materials | Produces a tailored CV in ATS-safe HTML/PDF and a cover letter in HTML, text, and optional PDF. | Uses only verified profile facts; optional AI editing is rejected if it adds unsupported claims. |
-| Automation desk | Runs configured public-board discovery, applies source/fit/cap rules, persists a daily run record, and writes a review queue. | Default cap: 4/day; stale, duplicate, unsupported, and employer-cooldown roles stop for review. |
-| Control | Tracks applications, schedules day 3/7/14 follow-ups, and writes a funnel briefing. | Structured auto-send is disabled until a private config explicitly enables it; browser portals remain review-gated. |
+| Automation desk | Runs configured public-board discovery, applies source/fit/cap rules, persists a daily run record, and writes a review queue. | Default cap: 4/day; stale, duplicate, unsupported, and employer-cooldown roles stop for review. Source failures are shown separately so an empty run is diagnosable. |
+| Control | Tracks applications, schedules day 3/7/14 follow-ups, and writes a funnel briefing. | Structured auto-send is disabled until a private config explicitly enables it; ambiguous submission responses stay `uncertain`; browser portals remain review-gated. |
 
 ## Start here — 10 minutes
 
@@ -35,6 +35,8 @@ PowerShell: `Copy-Item automation.config.example.json automation.config.json`
 macOS/Linux: `cp automation.config.example.json automation.config.json`
 
 Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. Set `"includeRemote": true` for remote roles; use `"remoteScope": "worldwide"` to search every explicitly remote location. Country- or region-restricted roles stay review-only and are flagged for work-authorization, payroll, and residency confirmation. The file is ignored by Git.
+
+`sourceFreshnessDays` defaults to 21 and keeps old listings out of the active queue. Source failures appear in the daily review instead of silently looking like a lack of suitable jobs.
 
 ### 3. Install and check the project
 
@@ -80,7 +82,7 @@ npm run review:packets -- \
   --output-dir ./artifacts/review
 ```
 
-Each packet includes a tailored PDF/HTML CV, cover letter, exact employer application URL, and a Greenhouse prefill command where that hosted form supports it. You review the facts and submit the employer form yourself. Greenhouse, Lever, Workable, LinkedIn, and other employer portals remain manual-final-click channels; no employer API key is needed for this workflow.
+Each packet includes a tailored PDF/HTML CV, cover letter, exact employer application URL, and a Greenhouse prefill command where that hosted form supports it. You review the facts and submit the employer form yourself. Greenhouse, Lever, Workable, LinkedIn, and other employer portals remain manual-final-click channels; no employer API key is needed for this workflow. If an API returns a successful HTTP status without an explicit confirmation, the record remains `uncertain` until you verify it.
 
 ### Add Lever and Workable sources
 
@@ -195,6 +197,8 @@ npm run greenhouse:hosted:prefill -- \
 
 This fills supported fields and leaves the browser open for review. It does not perform an unreviewed final submission. For API-backed Greenhouse applications, set `GREENHOUSE_JOB_BOARD_API_KEY` and use `--apply-mode supervised`; the supervised gate still remains in place.
 
+If a hosted form fails, add `--trace-path ./artifacts/traces/greenhouse.zip` to capture a local Playwright trace for diagnosis. Keep traces private; they can contain personal form data.
+
 ### Schedule and action follow-ups
 
 ```bash
@@ -217,6 +221,17 @@ npm run report -- \
 ```
 
 The report shows where work is accumulating, how many opportunities have reached each stage, applications in the last seven days, due follow-ups, and records that have stalled.
+
+### Record an outcome
+
+When an employer replies, record the result so future searches can learn which sources and role families are working:
+
+```bash
+npm run report -- --storage-path ./data/pipeline-store.sqlite
+node dist/index.js outcome --job-id <job-id> --outcome interview --note "First interview booked"
+```
+
+Valid outcomes are `interview`, `offer`, `rejected`, `withdrawn`, and `no-response`.
 
 ## Project layout
 

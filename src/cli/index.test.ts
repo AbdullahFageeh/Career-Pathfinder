@@ -421,3 +421,48 @@ test("runCli worker:once forwards numeric worker options and prints the worker s
   assert.match(stdout[0] ?? "", /Pipeline queue worker run complete\./);
   assert.match(stdout[0] ?? "", /- claimed: 5/);
 });
+
+test("runCli outcome records a feedback result", async () => {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  let capturedOptions: unknown;
+
+  const exitCode = await runCli(
+    [
+      "outcome",
+      "--job-id",
+      "job-greenhouse-site-manager",
+      "--outcome",
+      "interview",
+      "--note",
+      "First interview booked",
+      "--at",
+      "2026-06-12T08:00:00.000Z"
+    ],
+    {
+      runOutcomeOperation: async (options) => {
+        capturedOptions = options;
+        return {
+          record: { ...sampleApplicationRecord, outcome: "interview", outcomeAt: options.now }
+        };
+      }
+    },
+    {
+      stdout: (message) => stdout.push(message),
+      stderr: (message) => stderr.push(message)
+    }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(capturedOptions, {
+    applicationId: undefined,
+    jobId: "job-greenhouse-site-manager",
+    outcome: "interview",
+    note: "First interview booked",
+    storagePath: undefined,
+    now: "2026-06-12T08:00:00.000Z"
+  });
+  assert.equal(stderr.length, 0);
+  assert.match(stdout[0] ?? "", /Application outcome recorded/);
+  assert.match(stdout[0] ?? "", /interview/);
+});

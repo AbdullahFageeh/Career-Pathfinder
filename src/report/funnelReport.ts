@@ -1,4 +1,4 @@
-import type { ApplicationRecord, ApplicationStatus } from "../shared/contracts.js";
+import type { ApplicationOutcome, ApplicationRecord, ApplicationStatus } from "../shared/contracts.js";
 import { listDueFollowUps, type DueFollowUp } from "../followup/index.js";
 
 const DAY_IN_MS = 86_400_000;
@@ -13,6 +13,13 @@ const FUNNEL_ORDER: readonly ApplicationStatus[] = [
   "applied",
   "followed-up",
   "closed"
+];
+const OUTCOME_ORDER: readonly ApplicationOutcome[] = [
+  "interview",
+  "offer",
+  "rejected",
+  "no-response",
+  "withdrawn"
 ];
 
 export type FunnelStageCount = {
@@ -54,6 +61,7 @@ export type FunnelReport = {
   staleApplications: StaleApplication[];
   topCompanies: CompanyActivity[];
   weeklyApplied: number;
+  outcomes: Array<{ outcome: ApplicationOutcome; count: number }>;
 };
 
 export type BuildFunnelReportOptions = {
@@ -146,6 +154,17 @@ export function buildFunnelReport(
     );
   }).length;
 
+  const outcomeCounts = new Map<ApplicationOutcome, number>();
+  for (const record of records) {
+    if (record.outcome) {
+      outcomeCounts.set(record.outcome, (outcomeCounts.get(record.outcome) ?? 0) + 1);
+    }
+  }
+  const outcomes = OUTCOME_ORDER.map((outcome) => ({
+    outcome,
+    count: outcomeCounts.get(outcome) ?? 0
+  }));
+
   return {
     generatedAt,
     totalRecords: records.length,
@@ -162,7 +181,8 @@ export function buildFunnelReport(
     dueFollowUps: listDueFollowUps(records, generatedAt),
     staleApplications,
     topCompanies,
-    weeklyApplied
+    weeklyApplied,
+    outcomes
   };
 }
 
@@ -233,6 +253,9 @@ export function formatFunnelReportMarkdown(report: FunnelReport): string {
       )
     );
   }
+
+  lines.push("", "## Outcomes", "", "| Outcome | Count |", "| --- | ---: |");
+  lines.push(...report.outcomes.map((entry) => `| ${entry.outcome} | ${entry.count} |`));
 
   lines.push("");
   return lines.join("\n");

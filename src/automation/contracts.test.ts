@@ -174,3 +174,18 @@ test("accepts explicit worldwide remote scope and defaults older configs to comp
   assert.equal(worldwide.remoteScope, "worldwide");
   assert.equal(defaulted.remoteScope, "compatible");
 });
+
+test("accepts a bounded source freshness window and defaults older configs", () => {
+  const configured = validateAutomationDeskConfig({ ...validConfig, sourceFreshnessDays: 14 });
+  const defaulted = validateAutomationDeskConfig(validConfig);
+
+  assert.equal(configured.sourceFreshnessDays, 14);
+  assert.equal(defaulted.sourceFreshnessDays, 21);
+});
+
+test("rejects an unsafe source freshness window", () => {
+  assert.throws(
+    () => validateAutomationDeskConfig({ ...validConfig, sourceFreshnessDays: 0 }),
+    /sourceFreshnessDays/i
+  );
+});

@@ -70,7 +70,10 @@ export async function runDailyAutomationDesk(
   });
 
   try {
-    const trusted = dedupeFreshTrustedJobs(options.jobs, options.config, { now });
+    const trusted = dedupeFreshTrustedJobs(options.jobs, options.config, {
+      now,
+      maxAgeDays: options.config.sourceFreshnessDays
+    });
     const reviewRequired: DailyAutomationDeskResult["reviewRequired"] = trusted.excluded.map((entry) => ({
       job: entry.job,
       reason: entry.reason

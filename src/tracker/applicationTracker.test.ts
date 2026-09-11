@@ -8,6 +8,7 @@ import { buildTailoredResume } from "../tailor/index.js";
 import {
   addApplicationNote,
   addWorkerDecision,
+  recordApplicationOutcome,
   applySubmissionAttemptToRecord,
   attachAtsAssessmentToRecord,
   attachTailoredResumeToRecord,
@@ -210,6 +211,21 @@ test("getOutstandingFollowUps keeps overdue scheduled follow-ups visible", () =>
     outstanding.map((followUp) => followUp.reason),
     ["Review overdue application handoff.", "Check recruiter contact details."]
   );
+});
+
+test("tracker records a real application outcome with an optional note", () => {
+  const record = createApplicationRecord({
+    job: { ...siteManagerJob, id: "job-outcome" },
+    createdAt: "2026-08-01T09:00:00.000Z"
+  });
+  const updated = recordApplicationOutcome(record, "interview", {
+    at: "2026-08-12T09:00:00.000Z",
+    note: "Recruiter invited me to a first interview."
+  });
+
+  assert.equal(updated.outcome, "interview");
+  assert.equal(updated.outcomeAt, "2026-08-12T09:00:00.000Z");
+  assert.match(updated.notes.at(-1)?.message ?? "", /first interview/);
 });
 
 test("tracker record rejects resume and ATS assessment from a different job", () => {
