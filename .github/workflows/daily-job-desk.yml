@@ -1,0 +1,84 @@
+name: Daily job desk
+
+on:
+  schedule:
+    # 09:00 Asia/Riyadh (06:00 UTC), Monday through Friday.
+    - cron: "0 6 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-job-desk
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Discover, prepare and report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Write private profile and automation settings
+        env:
+          APPLICATION_REFERENCE_MD: ${{ secrets.APPLICATION_REFERENCE_MD }}
+          AUTOMATION_CONFIG_JSON: ${{ secrets.AUTOMATION_CONFIG_JSON }}
+        run: |
+          if [ -z "$APPLICATION_REFERENCE_MD" ] || [ -z "$AUTOMATION_CONFIG_JSON" ]; then
+            echo "Add APPLICATION_REFERENCE_MD and AUTOMATION_CONFIG_JSON repository secrets before enabling this workflow." >&2
+            exit 1
+          fi
+          printf '%s' "$APPLICATION_REFERENCE_MD" > APPLICATION_REFERENCE.md
+          printf '%s' "$AUTOMATION_CONFIG_JSON" > automation.config.json
+
+      - name: Enforce observe-only scheduled mode
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+          const config = JSON.parse(await readFile("automation.config.json", "utf8"));
+          if (config.automationMode !== "observe" || config.autoSubmitEnabled !== false) {
+            throw new Error("The scheduled job desk only runs with automationMode=observe and autoSubmitEnabled=false.");
+          }
+          NODE
+
+      - name: Check project
+        run: npm run check
+
+      - name: Run the daily discovery desk
+        run: npm run automation:run -- --config ./automation.config.json --reference-path ./APPLICATION_REFERENCE.md --storage-path ./data/pipeline-store.sqlite --output ./artifacts/automation-review.md
+
+      - name: Prepare queued roles
+        run: npm run worker:once -- --storage-path ./data/pipeline-store.sqlite --max-jobs 10
+
+      - name: Generate review packets
+        run: npm run review:packets -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output-dir ./artifacts/review --formats html
+
+      - name: Write follow-ups and funnel report
+        run: |
+          npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md
+          npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md
+
+      - name: Upload daily desk output
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-job-desk-${{ github.run_number }}
+          path: |
+            artifacts/automation-review.md
+            artifacts/followups.md
+            artifacts/funnel-report.md
+            artifacts/review/**
+          if-no-files-found: warn
+          retention-days: 14
