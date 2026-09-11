@@ -40,6 +40,8 @@ The `Automated Gmail outreach` workflow runs at 10:00 Riyadh time (Sunday–Thur
 
 The profile and CV secrets are already installed for this repository. Create the App Password at <https://myaccount.google.com/apppasswords>, then add it under the repository's **Settings → Secrets and variables → Actions** as `GMAIL_APP_PASSWORD`.
 
+After an initial email is recorded as sent, the cloud workflow creates a follow-up after five days and sends it automatically when a later run is within the daily limit. Follow-ups include the CV again and are marked separately in the saved state.
+
 `open-drafts --mail` opens the prepared `.eml` files in Apple Mail. It does not send them. After you send one, record it:
 
 ```bash
