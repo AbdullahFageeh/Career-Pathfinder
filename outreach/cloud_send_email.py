@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Send queued outreach from GitHub Actions through Gmail SMTP."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import smtplib
+from datetime import date, datetime, timedelta
+from email.message import EmailMessage
+from pathlib import Path
+
+from prepare_outreach import (
+    DEFAULT_STATE_PATH,
+    TARGETS_PATH,
+    build_email_body,
+    load_state,
+    parse_profile,
+    read_targets,
+    save_state,
+)
+
+
+def send_email(target: dict[str, str], profile: dict[str, str], resume: Path, username: str, password: str) -> None:
+    message = EmailMessage()
+    message["From"] = username
+    message["To"] = target["contact_email"].strip().lower()
+    message["Subject"] = f"Application — {target['role_lane']} — {profile['name']}"
+    message.set_content(build_email_body(target, profile))
+    message.add_attachment(resume.read_bytes(), maintype="application", subtype="pdf", filename=resume.name)
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
+        smtp.login(username, password)
+        smtp.send_message(message)
+
+
+def main(args: argparse.Namespace) -> int:
+    username = os.environ.get("GMAIL_USER", "").strip()
+    password = os.environ.get("GMAIL_APP_PASSWORD", "").strip()
+    if not username or not password:
+        raise SystemExit("GMAIL_USER and GMAIL_APP_PASSWORD secrets are required")
+    profile = parse_profile(Path(args.profile).resolve())
+    resume = Path(profile["resume"]).expanduser().resolve()
+    if not resume.is_file():
+        raise SystemExit(f"CV not found: {resume}")
+    targets = {row["id"]: row for row in read_targets(Path(args.targets).resolve())}
+    state_path = Path(args.state).resolve()
+    state = load_state(state_path)
+    today = date.today().isoformat()
+    sent_today = sum(1 for item in state.values() if item.get("status") == "sent" and str(item.get("sent_at", "")).startswith(today))
+    remaining = max(0, args.daily_cap - sent_today)
+    candidates = [item for item in state.values() if item.get("status") == "drafted" and item.get("contact_email") and item.get("id") in targets][: min(args.limit, remaining)]
+    if args.dry_run:
+        for item in candidates:
+            print(f"Would send {item['id']} -> {item['contact_email']}")
+        return 0
+    sent = 0
+    for item in candidates:
+        try:
+            send_email(targets[item["id"]], profile, resume, username, password)
+        except (OSError, smtplib.SMTPException) as exc:
+            print(f"Stopped after {sent} message(s); Gmail reported an error for {item['id']}: {exc}")
+            break
+        sent_at = datetime.now().astimezone()
+        item.update({"status": "sent", "sent_at": sent_at.isoformat(timespec="seconds"), "followup_due": (sent_at.date() + timedelta(days=args.followup_days)).isoformat(), "followup_draft": "", "send_method": "github-actions-gmail-smtp"})
+        save_state(state_path, state)
+        sent += 1
+        print(f"Sent {item['id']} to {item['contact_email']} from {username}")
+    print(f"Completed: {sent} message(s) sent.")
+    return 0
+
+
+def parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--targets", default=str(TARGETS_PATH))
+    p.add_argument("--state", default=str(DEFAULT_STATE_PATH))
+    p.add_argument("--profile", required=True)
+    p.add_argument("--limit", type=int, default=10)
+    p.add_argument("--daily-cap", type=int, default=10)
+    p.add_argument("--followup-days", type=int, default=5)
+    p.add_argument("--dry-run", action="store_true")
+    return p
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(parser().parse_args()))
