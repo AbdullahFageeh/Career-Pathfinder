@@ -29,6 +29,17 @@ The Gmail sender is scheduled for Sunday–Thursday, 10:00–11:00 Riyadh time, 
 python3 outreach/auto_send_email.py --dry-run
 ```
 
+## GitHub cloud runner
+
+The `Automated Gmail outreach` workflow runs at 10:00 Riyadh time (Sunday–Thursday) on GitHub-hosted infrastructure. It uses Gmail SMTP, so add these repository secrets before enabling sends:
+
+- `GMAIL_USER` — `AbdullahFageeh@gmail.com`
+- `GMAIL_APP_PASSWORD` — a 16-character Google App Password
+- `APPLICATION_REFERENCE_MD` — the private profile file
+- `CV_PDF_BASE64` — the CV encoded as base64
+
+The profile and CV secrets are already installed for this repository. Create the App Password at <https://myaccount.google.com/apppasswords>, then add it under the repository's **Settings → Secrets and variables → Actions** as `GMAIL_APP_PASSWORD`.
+
 `open-drafts --mail` opens the prepared `.eml` files in Apple Mail. It does not send them. After you send one, record it:
 
 ```bash
