@@ -1,0 +1,63 @@
+{
+  "saudi-event-management": {
+    "status": "sent",
+    "sent_at": "2026-09-11T05:57:59+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "xora": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:01:10+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "eventful-group": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:05:33+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "aac": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:10:42+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "eveforceksa": {
+    "status": "skipped",
+    "sent_at": "2026-09-11T06:10:42+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": "",
+    "skipped_at": "2026-09-11T06:13:57+03:00"
+  },
+  "eventia": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:10:42+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "mag-events": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:10:42+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "eventador": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:10:42+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "eventa": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:10:42+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  },
+  "the-touch": {
+    "status": "sent",
+    "sent_at": "2026-09-11T06:10:42+03:00",
+    "followup_due": "2026-09-16",
+    "followup_draft": ""
+  }
+}

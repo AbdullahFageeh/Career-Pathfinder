@@ -31,6 +31,13 @@ jobs:
           key: outreach-state-${{ github.run_id }}
           restore-keys: outreach-state-
 
+      - name: Seed existing outreach history
+        run: |
+          mkdir -p .cloud-state
+          if [ ! -s .cloud-state/state.json ]; then
+            cp outreach/state_seed.json .cloud-state/state.json
+          fi
+
       - name: Prepare private files
         env:
           APPLICATION_REFERENCE_MD: ${{ secrets.APPLICATION_REFERENCE_MD }}
