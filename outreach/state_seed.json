@@ -17,6 +17,13 @@
     "followup_due": "2026-09-16",
     "followup_draft": ""
   },
+  "evolution-services": {
+    "status": "sent",
+    "sent_at": "2026-09-12T19:32:00+00:00",
+    "followup_due": "2026-09-17",
+    "followup_draft": "",
+    "send_method": "github-actions-gmail-smtp"
+  },
   "aac": {
     "status": "sent",
     "sent_at": "2026-09-11T06:10:42+03:00",
@@ -36,11 +43,53 @@
     "followup_due": "2026-09-16",
     "followup_draft": ""
   },
+  "crown-events": {
+    "status": "sent",
+    "sent_at": "2026-09-12T19:32:00+00:00",
+    "followup_due": "2026-09-17",
+    "followup_draft": "",
+    "send_method": "github-actions-gmail-smtp"
+  },
   "mag-events": {
     "status": "sent",
     "sent_at": "2026-09-11T06:10:42+03:00",
     "followup_due": "2026-09-16",
     "followup_draft": ""
+  },
+  "yax": {
+    "status": "sent",
+    "sent_at": "2026-09-12T19:32:00+00:00",
+    "followup_due": "2026-09-17",
+    "followup_draft": "",
+    "send_method": "github-actions-gmail-smtp"
+  },
+  "dmg-events": {
+    "status": "sent",
+    "sent_at": "2026-09-12T19:32:00+00:00",
+    "followup_due": "2026-09-17",
+    "followup_draft": "",
+    "send_method": "github-actions-gmail-smtp"
+  },
+  "al-sunaidi-expo": {
+    "status": "sent",
+    "sent_at": "2026-09-12T19:32:00+00:00",
+    "followup_due": "2026-09-17",
+    "followup_draft": "",
+    "send_method": "github-actions-gmail-smtp"
+  },
+  "shine-event-staffing": {
+    "status": "sent",
+    "sent_at": "2026-09-12T19:32:00+00:00",
+    "followup_due": "2026-09-17",
+    "followup_draft": "",
+    "send_method": "github-actions-gmail-smtp"
+  },
+  "xenial-events": {
+    "status": "sent",
+    "sent_at": "2026-09-12T19:32:00+00:00",
+    "followup_due": "2026-09-17",
+    "followup_draft": "",
+    "send_method": "github-actions-gmail-smtp"
   },
   "eventador": {
     "status": "sent",

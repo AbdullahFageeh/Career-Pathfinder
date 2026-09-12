@@ -16,7 +16,7 @@ from prepare_outreach import build_followup_body, load_state, parse_profile, rea
 def main(args: argparse.Namespace) -> int:
     username = os.environ.get("GMAIL_USER", "").strip()
     password = os.environ.get("GMAIL_APP_PASSWORD", "").strip()
-    if not username or not password:
+    if not args.dry_run and (not username or not password):
         raise SystemExit("GMAIL_USER and GMAIL_APP_PASSWORD secrets are required")
     profile = parse_profile(Path(args.profile).resolve())
     resume = Path(profile["resume"]).resolve()

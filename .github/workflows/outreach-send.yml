@@ -67,7 +67,7 @@ jobs:
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: python3 outreach/cloud_send_followups.py --limit 10 --daily-cap 10 --state .cloud-state/state.json --targets targets.csv --profile /tmp/abdullah-outreach/APPLICATION_REFERENCE.md
+        run: python3 outreach/cloud_send_followups.py --limit 10 --daily-cap 10 --state .cloud-state/state.json --targets outreach/targets.csv --profile /tmp/abdullah-outreach/APPLICATION_REFERENCE.md
 
       - name: Save outreach state
         uses: actions/cache/save@v4
