@@ -54,6 +54,12 @@ jobs:
       - name: Prepare queued emails
         run: python3 outreach/prepare_outreach.py prepare --limit 50 --state .cloud-state/state.json --profile /tmp/abdullah-outreach/APPLICATION_REFERENCE.md --email-dir /tmp/abdullah-outreach/email-drafts --message-dir /tmp/abdullah-outreach/messages --dashboard /tmp/abdullah-outreach/review_queue.md
 
+      - name: Verify Gmail authentication
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python3 outreach/cloud_send_email.py --check-credentials --profile /tmp/abdullah-outreach/APPLICATION_REFERENCE.md
+
       - name: Send up to 10 emails
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}

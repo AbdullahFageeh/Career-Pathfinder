@@ -38,6 +38,14 @@ def main(args: argparse.Namespace) -> int:
     password = os.environ.get("GMAIL_APP_PASSWORD", "").strip()
     if not args.dry_run and (not username or not password):
         raise SystemExit("GMAIL_USER and GMAIL_APP_PASSWORD secrets are required")
+    if args.check_credentials:
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
+                smtp.login(username, password)
+        except (OSError, smtplib.SMTPException) as exc:
+            raise SystemExit(f"Gmail authentication failed: {exc}") from exc
+        print("Gmail authentication verified. No message was sent.")
+        return 0
     profile = parse_profile(Path(args.profile).resolve())
     resume = Path(profile["resume"]).expanduser().resolve()
     if not resume.is_file():
@@ -78,6 +86,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--daily-cap", type=int, default=10)
     p.add_argument("--followup-days", type=int, default=5)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--check-credentials", action="store_true", help="Verify Gmail login without sending email")
     return p
 
 
