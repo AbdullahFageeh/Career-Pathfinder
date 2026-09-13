@@ -101,7 +101,7 @@ jobs:
       - name: Encrypt private review packets
         if: always()
         env:
-          PIPELINE_STATE_KEY: ${{ secrets.PIPELINE_STATE_KEY }}
+          PIPELINE_STATE_KEY: ${{ secrets.PIPELINE_STATE_KEY_NEXT || secrets.PIPELINE_STATE_KEY }}
         run: |
           if [ -z "$PIPELINE_STATE_KEY" ]; then
             echo "PIPELINE_STATE_KEY is not configured; private review packets will not be uploaded."
@@ -117,7 +117,7 @@ jobs:
       - name: Encrypt pipeline state when configured
         if: always()
         env:
-          PIPELINE_STATE_KEY: ${{ secrets.PIPELINE_STATE_KEY }}
+          PIPELINE_STATE_KEY: ${{ secrets.PIPELINE_STATE_KEY_NEXT || secrets.PIPELINE_STATE_KEY }}
         run: |
           if [ -z "$PIPELINE_STATE_KEY" ]; then
             echo "PIPELINE_STATE_KEY is not configured; pipeline state will not persist between runs."
