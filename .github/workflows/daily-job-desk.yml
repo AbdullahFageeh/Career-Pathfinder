@@ -98,6 +98,22 @@ jobs:
           npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md
           npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md
 
+      - name: Encrypt private review packets
+        if: always()
+        env:
+          PIPELINE_STATE_KEY: ${{ secrets.PIPELINE_STATE_KEY }}
+        run: |
+          if [ -z "$PIPELINE_STATE_KEY" ]; then
+            echo "PIPELINE_STATE_KEY is not configured; private review packets will not be uploaded."
+            exit 0
+          fi
+          if [ -n "$(find artifacts/review -type f -print -quit 2>/dev/null)" ]; then
+            tar -czf .pipeline-state/review-packets.tar.gz -C artifacts/review .
+            node scripts/secure_pipeline_state.mjs encrypt-file .pipeline-state/review-packets.tar.gz .pipeline-state/review-packets.tar.gz.enc
+          else
+            echo "No review packets were generated."
+          fi
+
       - name: Encrypt pipeline state when configured
         if: always()
         env:
@@ -153,4 +169,13 @@ jobs:
             artifacts/followups.md
             artifacts/funnel-report.md
           if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload encrypted private review packets
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: private-review-packets-${{ github.run_number }}
+          path: .pipeline-state/review-packets.tar.gz.enc
+          if-no-files-found: ignore
           retention-days: 7

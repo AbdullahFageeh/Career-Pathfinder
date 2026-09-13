@@ -64,7 +64,14 @@ Open `artifacts/daily-shortlist.md`, then work the first two roles that you genu
 
 Run the automation command once after creating your private profile and config. It discovers enabled official Greenhouse boards plus configured public Lever and Workable career sites, rejects stale or duplicate roles, applies Saudi eligibility and fit rules, respects daily and employer caps, queues selected roles, and writes a compact review sheet.
 
-The GitHub Actions desk can carry its queue between runs through an encrypted cache. Create a random 32-byte key, base64-encode it, and save it as the repository secret `PIPELINE_STATE_KEY`. The workflow stores only encrypted state; without this secret, each hosted run starts with an empty state by design.
+The GitHub Actions desk can carry its queue between runs through an encrypted cache. Create a random 32-byte key, base64-encode it, and save it as the repository secret `PIPELINE_STATE_KEY`. The workflow stores encrypted state and uploads review packets only as an encrypted seven-day artifact; without this secret, each hosted run starts with an empty state and does not upload private packets.
+
+To open a downloaded private packet bundle, use the same key locally:
+
+```bash
+node scripts/secure_pipeline_state.mjs decrypt-file review-packets.tar.gz.enc review-packets.tar.gz
+tar -xzf review-packets.tar.gz
+```
 
 ```bash
 npm run automation:run -- \
