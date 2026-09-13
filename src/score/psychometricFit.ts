@@ -226,8 +226,13 @@ const SPECIALTY_REQUIREMENTS: ReadonlyArray<{
   },
   {
     label: "employee-lifecycle, HR, payroll, and time-attendance specialization",
-    jobTerms: ["employee lifecycle", "time and attendance", "time & attendance", "payroll coordination", "employment law", "hr systems", "employee relations"],
+    jobTerms: ["employee lifecycle", "time and attendance", "time & attendance", "payroll coordination", "employment law", "hr systems", "hr operations", "employee relations"],
     profileEvidenceTerms: ["employee lifecycle", "human resources", "hr operations", "payroll", "time and attendance", "employment law"]
+  },
+  {
+    label: "low-code automation, scripting, and systems-integration specialization",
+    jobTerms: ["low-code workflow tools", "low-code/no-code", "zapier", "retool", "n8n", "light scripting", "message queues", "data pipelines", "api integrations"],
+    profileEvidenceTerms: ["low-code", "no-code", "zapier", "make.com", "retool", "n8n", "python", "typescript", "javascript", "message queue", "data pipeline", "api integration"]
   },
   {
     label: "customer-experience tooling and customer-success platform specialization",

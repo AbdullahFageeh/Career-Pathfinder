@@ -270,6 +270,26 @@ test("holds a CX tooling role without verified Zendesk, customer-success, or sup
   assert.ok(fit.reasons.some((reason) => reason.includes("customer-experience tooling")));
 });
 
+test("holds an HR AI automation lead role without hands-on HR automation engineering evidence", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "HR AI & Automation Operations Lead",
+      location: "Remote-EMEA",
+      description:
+        "Lead HR Operations automation using low-code workflow tools including Zapier, Make, Retool and n8n. Build data pipelines, API integrations and message queues with light scripting in Python or TypeScript."
+    }),
+    { now: "2026-09-14T00:00:00.000Z", selectionProfile: "psychometric-first", allowRemote: true }
+  );
+
+  assert.equal(fit.verifiedSpecialtyCompatible, false);
+  assert.equal(fit.band, "skip");
+  assert.ok(fit.score <= 34);
+  assert.ok(
+    fit.reasons.some((reason) => /employee-lifecycle|low-code automation/.test(reason))
+  );
+});
+
 
 test("recognizes transferable operations-delivery evidence without bypassing specialty safeguards", () => {
   const fit = scoreJobFit(

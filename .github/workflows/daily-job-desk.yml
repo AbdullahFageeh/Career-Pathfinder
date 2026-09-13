@@ -64,9 +64,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .pipeline-state/pipeline-store.sqlite.enc
-          key: daily-job-desk-private-state-${{ github.ref_name }}-${{ github.run_id }}
+          key: daily-job-desk-private-state-v2-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
-            daily-job-desk-private-state-${{ github.ref_name }}-
+            daily-job-desk-private-state-v2-${{ github.ref_name }}-
 
       - name: Decrypt pipeline state when configured
         env:
@@ -134,7 +134,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .pipeline-state/pipeline-store.sqlite.enc
-          key: daily-job-desk-private-state-${{ github.ref_name }}-${{ github.run_id }}
+          key: daily-job-desk-private-state-v2-${{ github.ref_name }}-${{ github.run_id }}
 
       - name: Add a small run summary
         if: always()
