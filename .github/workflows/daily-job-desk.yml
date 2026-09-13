@@ -57,14 +57,38 @@ jobs:
       - name: Check project
         run: npm run check
 
+      - name: Prepare private runtime directories
+        run: mkdir -p data artifacts/review
+
+      - name: Restore encrypted pipeline state
+        uses: actions/cache/restore@v4
+        with:
+          path: .pipeline-state/pipeline-store.sqlite.enc
+          key: daily-job-desk-private-state-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            daily-job-desk-private-state-${{ github.ref_name }}-
+
+      - name: Decrypt pipeline state when configured
+        env:
+          PIPELINE_STATE_KEY: ${{ secrets.PIPELINE_STATE_KEY }}
+        run: |
+          if [ -z "$PIPELINE_STATE_KEY" ]; then
+            echo "PIPELINE_STATE_KEY is not configured; this run starts with empty pipeline state."
+            exit 0
+          fi
+          if [ -s .pipeline-state/pipeline-store.sqlite.enc ]; then
+            node scripts/secure_pipeline_state.mjs decrypt .pipeline-state/pipeline-store.sqlite.enc data/pipeline-store.sqlite
+          else
+            echo "No previous encrypted pipeline state found; starting fresh."
+          fi
+
       - name: Run the daily discovery desk
         run: npm run automation:run -- --config ./automation.config.json --reference-path ./APPLICATION_REFERENCE.md --storage-path ./data/pipeline-store.sqlite --output ./artifacts/automation-review.md
 
       - name: Prepare queued roles
         run: |
-          mkdir -p artifacts
           set -o pipefail
-          npm run worker:once -- --storage-path ./data/pipeline-store.sqlite --max-jobs 10 | tee artifacts/worker-report.txt
+          npm run worker:once -- --storage-path ./data/pipeline-store.sqlite --max-jobs 30 | tee artifacts/worker-report.txt
 
       - name: Generate review packets
         run: npm run review:packets -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output-dir ./artifacts/review --formats html
@@ -73,6 +97,28 @@ jobs:
         run: |
           npm run followups -- --storage-path ./data/pipeline-store.sqlite --reference-path ./APPLICATION_REFERENCE.md --output ./artifacts/followups.md
           npm run report -- --storage-path ./data/pipeline-store.sqlite --output ./artifacts/funnel-report.md
+
+      - name: Encrypt pipeline state when configured
+        if: always()
+        env:
+          PIPELINE_STATE_KEY: ${{ secrets.PIPELINE_STATE_KEY }}
+        run: |
+          if [ -z "$PIPELINE_STATE_KEY" ]; then
+            echo "PIPELINE_STATE_KEY is not configured; pipeline state will not persist between runs."
+            exit 0
+          fi
+          if [ -s data/pipeline-store.sqlite ]; then
+            node scripts/secure_pipeline_state.mjs encrypt data/pipeline-store.sqlite .pipeline-state/pipeline-store.sqlite.enc
+          else
+            echo "No pipeline database was produced; nothing to persist."
+          fi
+
+      - name: Save encrypted pipeline state
+        if: always() && hashFiles('.pipeline-state/pipeline-store.sqlite.enc') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .pipeline-state/pipeline-store.sqlite.enc
+          key: daily-job-desk-private-state-${{ github.ref_name }}-${{ github.run_id }}
 
       - name: Add a small run summary
         if: always()
@@ -88,6 +134,11 @@ jobs:
               sed -n '/## Run summary/,/## Queued for preparation/p' artifacts/automation-review.md | head -20
             else
               echo "The desk did not produce a summary; inspect the failed step above."
+            fi
+            if [ -f artifacts/worker-report.txt ]; then
+              echo ""
+              echo "Worker result:"
+              tail -8 artifacts/worker-report.txt
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 

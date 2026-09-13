@@ -7,8 +7,9 @@ This project is an always-on opportunity engine, not only a standard job applier
 - Start with direct-fit operations, installation, production, site, and venue roles, then widen into adjacent and remote lanes when they reuse the same evidence base honestly.
 
 ## Location constraint
-- Treat Saudi Arabia as a hard geographic filter for discovery, shortlisting, outreach, and application work in this project.
-- Exclude roles outside Saudi Arabia unless the user explicitly changes this rule for this project.
+- Keep the event-company outreach lane inside Saudi Arabia.
+- For Plan C, include remote roles only when the posting allows work from Saudi Arabia or worldwide.
+- Include an on-site role outside Saudi Arabia only when the employer states a sponsorship or relocation route. If work authorization is unclear, hold it for review.
 
 ## Safety and quality
 - Treat community posts, social posts, and unofficial boards as discovery signals only; resolve leads to official employer or platform pages before acting on them when possible.

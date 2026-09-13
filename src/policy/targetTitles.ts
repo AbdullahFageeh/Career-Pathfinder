@@ -4,7 +4,8 @@ export type TargetTitleGroup = {
     | "site-venue-operations"
     | "production-delivery"
     | "operations-programme-delivery"
-    | "client-service-delivery";
+    | "client-service-delivery"
+    | "portable-operations";
   titles: readonly string[];
 };
 
@@ -70,6 +71,24 @@ export const lane1TargetTitleGroups: readonly TargetTitleGroup[] = [
       "Account Manager",
       "Client Services Manager",
       "Client Service Manager"
+    ]
+  },
+  {
+    family: "portable-operations",
+    titles: [
+      "Project Operations Specialist",
+      "PMO Coordinator",
+      "PMO Analyst",
+      "Project Support Officer",
+      "Operations Reporting Coordinator",
+      "Knowledge Operations Coordinator",
+      "Knowledge Management Specialist",
+      "Documentation Coordinator",
+      "Process Documentation Specialist",
+      "AI Operations Coordinator",
+      "Workflow Automation Specialist",
+      "Business Process Analyst",
+      "Operations Enablement Specialist"
     ]
   }
 ] as const;

@@ -1,6 +1,6 @@
 # Career Pathfinder
 
-A **Saudi-first, evidence-bound career discovery and application workflow** for event production, venue operations, installation, site delivery, supplier coordination, and adjacent operational roles.
+A **two-lane, evidence-bound career discovery and application workflow** for Saudi event operations plus portable remote operations, reporting, PMO, documentation, and AI-workflow roles.
 
 It turns the job search into a controlled daily application desk: collect trusted Saudi roles and explicitly enabled remote roles, rank them against verified experience, queue tailored materials, track what has actually been applied to, and surface follow-ups before opportunities go cold. It is intentionally low-volume and evidence-bound: unknown questions, untrusted sources, stale roles, country-restricted remote listings, and unsupported portals are held for review rather than guessed.
 
@@ -10,7 +10,7 @@ Development setup and contribution commands are documented in [`docs/development
 
 | Stage | Outcome | Safeguard |
 | --- | --- | --- |
-| Discovery | Queries configured public Greenhouse, Lever, and Workable employer career sources. | Keeps Saudi roles by default; remote roles require an explicit config opt-in, trusted public source, and a compatible stated jurisdiction. |
+| Discovery | Queries configured public Greenhouse, Lever, and Workable employer career sources. | Keeps Saudi event roles and remote roles that explicitly allow Saudi Arabia or worldwide applicants. |
 | Qualification | Ranks saved and discovered roles by title, delivery evidence, location, and recency. | Excludes country-restricted remote roles, Saudi-national-only roles without confirmed eligibility, and roles requiring unverified specialties. |
 | Materials | Produces a tailored CV in ATS-safe HTML/PDF and a cover letter in HTML, text, and optional PDF. | Uses only verified profile facts; optional AI editing is rejected if it adds unsupported claims. |
 | Automation desk | Runs configured public-board discovery, applies source/fit/cap rules, persists a daily run record, and writes a review queue. | Default cap: 4/day; stale, duplicate, unsupported, and employer-cooldown roles stop for review. Source failures are shown separately so an empty run is diagnosable. |
@@ -34,7 +34,7 @@ PowerShell: `Copy-Item automation.config.example.json automation.config.json`
 
 macOS/Linux: `cp automation.config.example.json automation.config.json`
 
-Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. Set `"includeRemote": true` for remote roles; use `"remoteScope": "worldwide"` to search every explicitly remote location. Country- or region-restricted roles stay review-only and are flagged for work-authorization, payroll, and residency confirmation. The file is ignored by Git.
+Keep `"automationMode": "observe"` and `"autoSubmitEnabled": false` for the one-click review workflow. Add only verified employer identifiers: `boardToken` for Greenhouse and `siteToken` for Lever or Workable. The example enables remote discovery with `"remoteScope": "compatible"`, so a role must state Saudi Arabia, worldwide, global, EMEA, Middle East, or GCC eligibility. Use `"remoteScope": "worldwide"` only to collect restricted remote roles for manual review. The file is ignored by Git.
 
 `sourceFreshnessDays` defaults to 21 and keeps old listings out of the active queue. Source failures appear in the daily review instead of silently looking like a lack of suitable jobs.
 
@@ -64,6 +64,8 @@ Open `artifacts/daily-shortlist.md`, then work the first two roles that you genu
 
 Run the automation command once after creating your private profile and config. It discovers enabled official Greenhouse boards plus configured public Lever and Workable career sites, rejects stale or duplicate roles, applies Saudi eligibility and fit rules, respects daily and employer caps, queues selected roles, and writes a compact review sheet.
 
+The GitHub Actions desk can carry its queue between runs through an encrypted cache. Create a random 32-byte key, base64-encode it, and save it as the repository secret `PIPELINE_STATE_KEY`. The workflow stores only encrypted state; without this secret, each hosted run starts with an empty state by design.
+
 ```bash
 npm run automation:run -- \
   --config ./automation.config.json \
@@ -83,6 +85,8 @@ npm run review:packets -- \
 ```
 
 Each packet includes a tailored PDF/HTML CV, cover letter, exact employer application URL, and a Greenhouse prefill command where that hosted form supports it. You review the facts and submit the employer form yourself. Greenhouse, Lever, Workable, LinkedIn, and other employer portals remain manual-final-click channels; no employer API key is needed for this workflow. If an API returns a successful HTTP status without an explicit confirmation, the record remains `uncertain` until you verify it.
+
+The example configuration also includes Remote's verified public Greenhouse board as a review-only Plan C source. The role-level eligibility check still confirms the stated country or region before a job can be queued.
 
 ### Add Lever and Workable sources
 
@@ -134,9 +138,9 @@ npm run discover:greenhouse -- \
   --storage-path ./data/pipeline-store.sqlite
 ```
 
-The default boards are deliberately small and verified as public Greenhouse boards with Saudi vacancies. This is a **lead source**, not a complete market scan. Supply additional public Greenhouse board tokens with `--boards`; dead or unavailable boards are reported separately so a temporary source problem does not look like zero jobs.
+The default boards are deliberately small and verified as public Greenhouse boards with Saudi vacancies. This is a **lead source**, not a complete market scan. Supply additional verified public Greenhouse board tokens with `--boards`; dead or unavailable boards are reported separately so a temporary source problem does not look like zero jobs.
 
-Add `--all-titles` to retain every Saudi role from the chosen boards. By default, discovery focuses on operational target titles such as venue, site, production, installation, operations, logistics, facilities, and delivery roles.
+Add `--all-titles` to retain every Saudi role from the chosen boards. By default, discovery covers the event lane plus Plan C titles such as PMO, project support, operations reporting, documentation, knowledge operations, business process, and workflow automation.
 
 ### Rank jobs by fit
 

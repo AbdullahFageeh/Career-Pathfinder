@@ -10,7 +10,10 @@ test("includes bounded related operations and delivery titles for transferable-r
     "Implementation Manager",
     "Service Delivery Manager",
     "Client Delivery Manager",
-    "Client Operations Manager"
+    "Client Operations Manager",
+    "PMO Coordinator",
+    "Knowledge Operations Coordinator",
+    "Workflow Automation Specialist"
   ]) {
     assert.ok(lane1ExactJobTitles.includes(title));
   }

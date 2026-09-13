@@ -3,7 +3,7 @@
   "timeZone": "Asia/Riyadh",
   "automationMode": "observe",
   "selectionProfile": "psychometric-first",
-  "includeRemote": false,
+  "includeRemote": true,
   "remoteScope": "compatible",
   "sourceFreshnessDays": 21,
   "autoSubmitEnabled": false,
@@ -17,6 +17,13 @@
     "minAtsScore": 80
   },
   "sources": [
+    {
+      "id": "plan-c-remote-greenhouse",
+      "kind": "greenhouse",
+      "capability": "review-only",
+      "enabled": true,
+      "boardToken": "remotecom"
+    },
     {
       "id": "verified-greenhouse-board",
       "kind": "greenhouse",

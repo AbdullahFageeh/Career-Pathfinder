@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Saudi-first, evidence-bound career discovery and application workflow.",
+  "description": "Two-lane, evidence-bound career discovery and application workflow.",
   "engines": {
     "node": ">=22 <25"
   },
