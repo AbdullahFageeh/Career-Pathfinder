@@ -10,6 +10,7 @@ from datetime import date, datetime
 from email.message import EmailMessage
 from pathlib import Path
 
+from email_preflight import validate_recipient
 from prepare_outreach import build_followup_body, load_state, parse_profile, read_targets, save_state
 
 
@@ -26,13 +27,25 @@ def main(args: argparse.Namespace) -> int:
     today = date.today().isoformat()
     sent_today = sum(1 for item in state.values() if item.get("status") == "sent" and str(item.get("sent_at", "")).startswith(today))
     remaining = max(0, args.daily_cap - sent_today)
-    due = [item for item in state.values() if item.get("status") == "followup_due" and item.get("id") in targets and item.get("contact_email")][: min(args.limit, remaining)]
-    if args.dry_run:
-        for item in due:
-            print(f"Would send follow-up {item['id']} -> {item['contact_email']}")
-        return 0
+    send_limit = min(args.limit, remaining)
+    due = [item for item in state.values() if item.get("status") == "followup_due" and item.get("id") in targets and item.get("contact_email")]
     sent = 0
     for item in due:
+        if sent >= send_limit:
+            break
+        validation = validate_recipient(item["contact_email"])
+        if validation.status != "valid":
+            print(f"Deferred follow-up {item['id']}: {validation.reason}")
+            if not args.dry_run:
+                item.update(validation.state_fields())
+                if validation.status == "invalid":
+                    item.update({"status": "invalid_email", "followup_due": "", "followup_draft": ""})
+                save_state(state_path, state)
+            continue
+        if args.dry_run:
+            print(f"Would send follow-up {item['id']} -> {validation.normalized} (domain validated)")
+            sent += 1
+            continue
         target = targets[item["id"]]
         message = EmailMessage()
         message["From"] = username
@@ -48,6 +61,7 @@ def main(args: argparse.Namespace) -> int:
         except (OSError, smtplib.SMTPException) as exc:
             print(f"Stopped after {sent} follow-up(s); Gmail reported an error for {item['id']}: {exc}")
             break
+        item.update(validation.state_fields())
         item.update({"status": "followup_sent", "followup_sent_at": datetime.now().astimezone().isoformat(timespec="seconds"), "send_method": "github-actions-gmail-smtp"})
         save_state(state_path, state)
         sent += 1

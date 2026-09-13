@@ -42,6 +42,12 @@ The profile and CV secrets are already installed for this repository. Create the
 
 After an initial email is recorded as sent, the cloud workflow creates a follow-up after five days and sends it automatically when a later run is within the daily limit. Follow-ups include the CV again and are marked separately in the saved state.
 
+Before each first email and follow-up, `email-validator` checks the address syntax and confirms that the domain has working DNS mail routing. Invalid domains are marked `invalid_email`; an inconclusive DNS check is deferred and tried again on the next run.
+
+The workflow also reads Gmail delivery-status reports without marking them as read. A temporary `4.x` report changes the target to `delivery_delayed`, and a permanent `5.x` report changes it to `bounced`. Both states suppress follow-ups so the automation does not send duplicates to an address already having delivery problems.
+
+This preflight cannot prove that an individual mailbox exists. Catch-all and privacy-protected mail servers deliberately make SMTP mailbox probing unreliable, so the workflow uses actual Gmail delivery reports as the final signal.
+
 `open-drafts --mail` opens the prepared `.eml` files in Apple Mail. It does not send them. After you send one, record it:
 
 ```bash
