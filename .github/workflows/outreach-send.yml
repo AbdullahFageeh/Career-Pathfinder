@@ -50,9 +50,9 @@ jobs:
           test -n "$CV_PDF_BASE64" || (echo "Missing CV_PDF_BASE64 secret" >&2; exit 1)
           mkdir -p .cloud-state /tmp/abdullah-outreach
           printf '%s' "$APPLICATION_REFERENCE_MD" > /tmp/abdullah-outreach/APPLICATION_REFERENCE.md
-          printf '%s' "$CV_PDF_BASE64" | base64 --decode > /tmp/abdullah-outreach/cv.pdf
-          sed -i "s#^\- Master CV PDF:.*#- Master CV PDF: /tmp/abdullah-outreach/cv.pdf#" /tmp/abdullah-outreach/APPLICATION_REFERENCE.md
-          test -s /tmp/abdullah-outreach/cv.pdf || (echo "CV_PDF_BASE64 decoded to an empty file" >&2; exit 1)
+          printf '%s' "$CV_PDF_BASE64" | base64 --decode > /tmp/abdullah-outreach/Abdullah_Fageeh_CV.pdf
+          sed -i "s#^\- Master CV PDF:.*#- Master CV PDF: /tmp/abdullah-outreach/Abdullah_Fageeh_CV.pdf#" /tmp/abdullah-outreach/APPLICATION_REFERENCE.md
+          test -s /tmp/abdullah-outreach/Abdullah_Fageeh_CV.pdf || (echo "CV_PDF_BASE64 decoded to an empty file" >&2; exit 1)
 
       - name: Prepare queued emails
         run: python3 outreach/prepare_outreach.py prepare --limit 50 --state .cloud-state/state.json --profile /tmp/abdullah-outreach/APPLICATION_REFERENCE.md --email-dir /tmp/abdullah-outreach/email-drafts --message-dir /tmp/abdullah-outreach/messages --dashboard /tmp/abdullah-outreach/review_queue.md
