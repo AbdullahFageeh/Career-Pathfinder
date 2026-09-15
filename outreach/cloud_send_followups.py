@@ -21,6 +21,8 @@ def main(args: argparse.Namespace) -> int:
         raise SystemExit("GMAIL_USER and GMAIL_APP_PASSWORD secrets are required")
     profile = parse_profile(Path(args.profile).resolve())
     resume = Path(profile["resume"]).resolve()
+    if not resume.is_file():
+        raise SystemExit(f"CV not found: {resume}. No follow-up was sent.")
     targets = {row["id"]: row for row in read_targets(Path(args.targets).resolve())}
     state_path = Path(args.state).resolve()
     state = load_state(state_path)
@@ -52,8 +54,7 @@ def main(args: argparse.Namespace) -> int:
         message["To"] = target["contact_email"].strip().lower()
         message["Subject"] = f"Following up — {target['role_lane']} — {profile['name']}"
         message.set_content(build_followup_body(target, profile, item.get("sent_at", "")))
-        if resume.is_file():
-            message.add_attachment(resume.read_bytes(), maintype="application", subtype="pdf", filename=resume.name)
+        message.add_attachment(resume.read_bytes(), maintype="application", subtype="pdf", filename=resume.name)
         try:
             with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
                 smtp.login(username, password)
