@@ -11,9 +11,29 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from cloud_process_delivery_reports import apply_report, extract_delivery_reports
 from email_preflight import validate_recipient
+from prepare_outreach import build_email_body
 
 
 class EmailPreflightTests(unittest.TestCase):
+    def test_outreach_body_uses_supported_experience_only(self) -> None:
+        body = build_email_body(
+            {
+                "company": "Example Events",
+                "city_or_region": "Riyadh",
+                "role_lane": "Event operations",
+            },
+            {
+                "name": "Abdullah Fageeh",
+                "city": "Jeddah",
+                "phone": "+966595266637",
+                "email": "AbdullahFageeh@gmail.com",
+            },
+        )
+        self.assertIn("six venues", body)
+        self.assertIn("20% ahead of schedule", body)
+        self.assertNotIn("25% reduction", body)
+        self.assertNotIn("30 suppliers", body)
+
     def test_valid_domain_is_allowed(self) -> None:
         result = validate_recipient(
             "Careers@Example.com",

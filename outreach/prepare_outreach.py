@@ -81,11 +81,11 @@ def build_email_body(target: dict[str, str], profile: dict[str, str]) -> str:
     lane = target["role_lane"]
     return f"""Hello {company} team,
 
-My name is {profile['name']}. I am an event operations and installation manager based in {profile['city']}, available for {lane.lower()} opportunities across Saudi Arabia.
+I’m {profile['name']}, based in {profile['city']}. I work in event operations and project coordination, and I’m interested in {lane.lower()} opportunities with {company}.
 
-My background includes venue overlay builds across six venues, a 25% reduction in site safety incidents through daily inductions and permit control, installations completed 20% ahead of the published build schedule, and coordination of 30 suppliers through load-in, show, and load-out.
+My experience includes coordinating venue builds across six venues, tracking schedules and suppliers, and supporting site updates, paperwork, and change requests. One major delivery finished 20% ahead of schedule.
 
-I am reaching out to ask whether you have a current or upcoming opportunity that fits this experience. I have attached my CV and would welcome a short conversation about how I could support {company}'s work in {location}.
+I have attached my CV in case my background could be useful for a current or upcoming project in {location}. I would appreciate the opportunity to be considered.
 
 Thank you for your time.
 
@@ -109,7 +109,7 @@ def build_followup_body(target: dict[str, str], profile: dict[str, str], sent_at
     sent_date = sent_at[:10]
     return f"""Hello {target['company']} team,
 
-I am following up on the CV I sent on {sent_date} regarding {target['role_lane'].lower()} opportunities. I remain available in Saudi Arabia and would be glad to speak if the team has a suitable current or upcoming need.
+I’m following up on the CV I sent on {sent_date} regarding {target['role_lane'].lower()} opportunities. I know your team may be busy, but I would be grateful to be considered if a suitable current or upcoming project comes up.
 
 Thank you,
 {profile['name']} | {profile['phone']} | {profile['email']}
