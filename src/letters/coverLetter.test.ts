@@ -71,6 +71,88 @@ test("buildCoverLetterDraft builds a factual letter from profile evidence", () =
   );
 });
 
+test("buildCoverLetterDraft turns a role headline into a grammatical opening", () => {
+  const candidate = {
+    ...profile,
+    headline:
+      "Event Operations and Production Manager delivering complex venue builds, site logistics, supplier coordination, and live event operations across Saudi Arabia."
+  };
+  const draft = buildCoverLetterDraft(candidate, job, undefined, { now });
+
+  assert.match(
+    draft.body,
+    /I am an Event Operations and Production Manager with experience delivering complex venue builds/
+  );
+});
+
+test("buildCoverLetterDraft avoids awkward standalone tender wording", () => {
+  const tenderJob = {
+    ...job,
+    title: "Events & Exhibitions Project Manager",
+    description: "Prepare technical proposals and tender documents, manage installation and supplier coordination."
+  };
+  const draft = buildCoverLetterDraft(profile, tenderJob, undefined, { now });
+
+  assert.doesNotMatch(draft.body, /focus on tender\b/i);
+});
+
+test("buildCoverLetterDraft avoids awkward standalone supplier wording", () => {
+  const supplierJob = {
+    ...job,
+    title: "Event Operations",
+    description: "Manage event delivery and supplier coordination."
+  };
+  const draft = buildCoverLetterDraft(profile, supplierJob, undefined, { now });
+
+  assert.doesNotMatch(draft.body, /focus on (?:delivery and )?supplier\b/i);
+});
+
+test("buildCoverLetterDraft avoids generic asset wording and selects role-relevant training", () => {
+  const readinessJob = {
+    ...job,
+    title: "Manager - Operational Readiness",
+    description:
+      "Lead project delivery and asset activation for complex programmes. PMP and health and safety credentials are preferred.",
+    tags: ["family:project-delivery", "operational-readiness", "asset-activation", "pmp", "health-safety"]
+  };
+  const resume = buildTailoredResume(profile, readinessJob);
+  const draft = buildCoverLetterDraft(profile, readinessJob, resume, { now });
+
+  assert.doesNotMatch(draft.body, /focus on .*\basset\b/i);
+  assert.match(draft.body, /PMP Certification Training Course/);
+  assert.match(draft.body, /NEBOSH International General Certificate/);
+});
+
+test("buildCoverLetterDraft omits client as a standalone alignment keyword", () => {
+  const destinationJob = {
+    ...job,
+    title: "Events Manager",
+    company: "Talent Blueprint FZ LLC",
+    description:
+      "Lead event planning and delivery. Coordinate clients, suppliers, event operations, venue readiness, guest experience, budgets, and contract staffing."
+  };
+  const draft = buildCoverLetterDraft(profile, destinationJob, undefined, { now });
+
+  assert.doesNotMatch(draft.body, /focus on .*\bclient\b/i);
+  assert.doesNotMatch(draft.body, /focus on .*\bcontract\b/i);
+  assert.doesNotMatch(draft.body, /focus on .*\bbudget\b/i);
+  assert.doesNotMatch(draft.body, /focus on .*\bvendor\b/i);
+  assert.doesNotMatch(draft.body, /focus on .*\bvenue\b/i);
+  assert.doesNotMatch(draft.body, /event operations and client/i);
+  assert.match(draft.body, /focus on [a-z]/);
+  assert.doesNotMatch(draft.body, /focus on [A-Z]/);
+});
+
+test("buildCoverLetterDraft does not repeat a role focus already stated in the company hook", () => {
+  const draft = buildCoverLetterDraft(profile, job, undefined, {
+    now,
+    companyHook: "The role focuses on delivery and supplier coordination."
+  });
+
+  assert.doesNotMatch(draft.body, /role's focus on delivery/i);
+  assert.doesNotMatch(draft.body, /scope in your posting is closely related/i);
+});
+
 test("buildCoverLetterDraft addresses a verified contact and honours tone", () => {
   const draft = buildCoverLetterDraft(profile, job, undefined, {
     now,

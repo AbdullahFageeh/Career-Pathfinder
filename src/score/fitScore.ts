@@ -184,9 +184,8 @@ export function scoreJobFit(
   const selectionProfile = options.selectionProfile ?? "standard";
   const psychometric = selectionProfile === "psychometric-first" ? assessPsychometricAlignment(job) : undefined;
   const ikigai = selectionProfile === "psychometric-first" ? assessIkigaiAlignment(job) : undefined;
-  const careerDomain = selectionProfile === "psychometric-first" ? assessCareerDomainAlignment(job) : undefined;
-  const verifiedSpecialty =
-    selectionProfile === "psychometric-first" ? assessVerifiedSpecialtyAlignment(profile, job) : undefined;
+  const careerDomain = assessCareerDomainAlignment(job);
+  const verifiedSpecialty = assessVerifiedSpecialtyAlignment(profile, job);
   const weightedScore =
     psychometric && ikigai
       ? Math.round(rawScore * 0.35 + psychometric.score * 0.55 + ikigai.score * 0.1)
@@ -196,18 +195,18 @@ export function scoreJobFit(
   const score = eligibility.eligible ? specialtyCappedScore : Math.min(specialtyCappedScore, 20);
 
   const reasons = buildReasons(dimensions, eligibility);
-  if (psychometric && ikigai && careerDomain && verifiedSpecialty) {
+  if (psychometric && ikigai) {
     reasons.unshift(
       `Psychometric alignment ${psychometric.score}/100 (${psychometric.band}) based on explicit posting signals.`,
       `Ikigai secondary alignment ${ikigai.score}/100 based on explicit posting signals.`
     );
-    if (!careerDomain.compatible) {
-      const domainReason = careerDomain.blockers[0] ?? "Posting text does not show an explicit target career-domain signal.";
-      reasons.unshift(`Career-domain hold: ${domainReason}`);
-    }
-    if (!verifiedSpecialty.compatible) {
-      reasons.unshift(`Verified-specialty hold: ${verifiedSpecialty.blockers[0]}`);
-    }
+  }
+  if (!careerDomain.compatible) {
+    const domainReason = careerDomain.blockers[0] ?? "Posting text does not show an explicit target career-domain signal.";
+    reasons.unshift(`Career-domain hold: ${domainReason}`);
+  }
+  if (!verifiedSpecialty.compatible) {
+    reasons.unshift(`Verified-specialty hold: ${verifiedSpecialty.blockers[0]}`);
   }
 
   return {
@@ -542,6 +541,16 @@ function scoreApplicationChannel(job: JobPosting): FitDimension {
       score: APPLICATION_CHANNEL_MAX,
       maxScore: APPLICATION_CHANNEL_MAX,
       notes: ["Greenhouse target, which this system can prefill in a supervised session."]
+    };
+  }
+
+  if (url.includes("linkedin.com/jobs/")) {
+    return {
+      key: "application-channel",
+      label: "Application channel",
+      score: 5,
+      maxScore: APPLICATION_CHANNEL_MAX,
+      notes: ["LinkedIn job listing; inspect the employer-provided apply route and complete it manually."]
     };
   }
 

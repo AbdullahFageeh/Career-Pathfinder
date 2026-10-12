@@ -53,6 +53,9 @@ export function parseCandidateProfileReference(
   const documentsSection = parseBulletSection(sections.get("Documents and file references") ?? []);
   const certificationsSection = parseBulletSection(sections.get("Certifications") ?? []);
   const proofPointsSection = parseBulletSection(sections.get("Core proof points") ?? []);
+  const experienceSection = parseBulletSection(sections.get("Professional experience") ?? []);
+  const educationSection = parseBulletSection(sections.get("Education") ?? []);
+  const languagesSection = parseBulletSection(sections.get("Languages") ?? []);
 
   const fullName = firstPresent(
     identitySection.keyValues.get("Full legal name"),
@@ -61,6 +64,7 @@ export function parseCandidateProfileReference(
   const preferredName = firstPresent(identitySection.keyValues.get("Preferred display name"));
   const email = firstPresent(identitySection.keyValues.get("Email"));
   const phone = firstPresent(identitySection.keyValues.get("Phone"));
+  const city = firstPresent(identitySection.keyValues.get("Current city"));
   const country = firstPresent(
     identitySection.keyValues.get("Current country"),
     identitySection.keyValues.get("Country of residence")
@@ -71,6 +75,9 @@ export function parseCandidateProfileReference(
   );
   const certifications = filterKnownValues(certificationsSection.simpleItems);
   const coreProofPoints = filterKnownValues(proofPointsSection.simpleItems);
+  const experienceHighlights = filterKnownValues(experienceSection.simpleItems);
+  const education = filterKnownValues(educationSection.simpleItems);
+  const languages = filterKnownValues(languagesSection.simpleItems);
 
   if (!fullName) {
     throw new Error("Candidate profile reference is missing a full legal name or preferred display name.");
@@ -90,11 +97,15 @@ export function parseCandidateProfileReference(
     ...(preferredName ? { preferredName } : {}),
     ...(email ? { email } : {}),
     ...(phone ? { phone } : {}),
+    ...(city ? { city } : {}),
     ...(country ? { country } : {}),
     headline,
     targetRoleFamilies,
     certifications,
     coreProofPoints,
+    ...(experienceHighlights.length > 0 ? { experienceHighlights } : {}),
+    ...(education.length > 0 ? { education } : {}),
+    ...(languages.length > 0 ? { languages } : {}),
     documents: createDocumentReferences(documentsSection.keyValues, options.referencePath),
     recurringAnswers: createRecurringAnswers(screeningSection.keyValues, options.referencePath)
   };

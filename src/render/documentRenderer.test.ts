@@ -17,6 +17,7 @@ const profile: CandidateProfile = {
   fullName: "Avery Morgan",
   email: "avery@example.test",
   phone: "+966500000000",
+  city: "Jeddah",
   country: "Saudi Arabia",
   headline: "Event operations and installation manager delivering venue builds across Saudi Arabia.",
   targetRoleFamilies: ["Installation Manager", "Venue Operations Manager"],
@@ -60,10 +61,31 @@ test("renderResumeDocumentHtml renders an ATS-safe single-column document", () =
 
   assert.match(html, /<h1>Avery Morgan<\/h1>/);
   assert.match(html, /avery@example\.test/);
+  assert.match(html, /Jeddah, Saudi Arabia/);
   assert.match(html, /Venue Operations Manager/);
   assert.match(html, /@page \{ size: A4/);
   assert.doesNotMatch(html, /<table/);
   assert.doesNotMatch(html, /column-count/);
+});
+
+test("renderResumeDocumentHtml keeps employment date ranges together in the heading", () => {
+  const resume = buildResume();
+  const datedResume = {
+    ...resume,
+    sections: [
+      ...resume.sections,
+      {
+        key: "professional-experience" as const,
+        title: "Professional Experience",
+        lines: [
+          "Account Manager | Example Co | Riyadh | Oct 2025 - Apr 2026 - Coordinated client and vendor delivery"
+        ]
+      }
+    ]
+  };
+  const html = renderResumeDocumentHtml(profile, job, datedResume);
+
+  assert.match(html, /<strong>Account Manager \| Example Co \| Riyadh \| Oct 2025 - Apr 2026<\/strong>Coordinated client and vendor delivery/);
 });
 
 test("renderResumeDocumentHtml escapes employer names containing markup characters", () => {
@@ -84,6 +106,8 @@ test("renderCoverLetterDocumentHtml renders salutation, paragraphs, and sign-off
   });
 
   assert.match(html, /Dear Example Events hiring team,/);
+  assert.match(html, /<body class="cover-letter">/);
+  assert.match(html, /body\.cover-letter \{ padding: 22mm 25mm; font-size: 11pt;/);
   assert.match(html, /First paragraph\./);
   assert.match(html, /Second paragraph\./);
   assert.match(html, /Kind regards,/);

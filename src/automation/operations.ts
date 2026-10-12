@@ -70,7 +70,7 @@ const DEFAULT_DEPENDENCIES: DailyAutomationOperationDependencies = {
 };
 
 /**
- * Executes one daily Saudi job discovery pass from explicitly configured public
+ * Executes one scheduled Saudi job discovery pass from explicitly configured public
  * ATS sources. The sources are combined before the trust, fit, cap, queue, and
  * adapter-level safeguards run, so a new discovery channel cannot bypass them.
  */
@@ -128,20 +128,22 @@ export async function runDailyAutomationOperation(
       referencePath: options.referencePath,
       profileId: options.profileId
     });
-    const markdown = formatAutomationReviewQueueMarkdown({
-      generatedAt: options.now,
-      run: run.run,
-      sourcesFailed: discovery.sourcesFailed,
-      queued: run.queued.map((entry) => ({
-        job: entry.job,
-        fitScore: entry.fitScore,
-        queueJobId: entry.queueJob.id
-      })),
-      reviewRequired: run.reviewRequired
-    });
+    const markdown = run.skipped
+      ? `# Daily automation desk review queue\n\nThe current four-hour scan window was already processed. The saved report was preserved.\n`
+      : formatAutomationReviewQueueMarkdown({
+          generatedAt: options.now,
+          run: run.run,
+          sourcesFailed: discovery.sourcesFailed,
+          queued: run.queued.map((entry) => ({
+            job: entry.job,
+            fitScore: entry.fitScore,
+            queueJobId: entry.queueJob.id
+          })),
+          reviewRequired: run.reviewRequired
+        });
     const outputPath = options.outputPath ? resolve(options.outputPath) : undefined;
 
-    if (outputPath) {
+    if (outputPath && !run.skipped) {
       await mkdir(dirname(outputPath), { recursive: true });
       await writeFile(outputPath, markdown, "utf8");
     }

@@ -30,6 +30,11 @@ const sampleProfile: CandidateProfile = {
     "safety incidents reduced by 25%",
     "Formula 1 venue operations supporting 50,000+ attendees"
   ],
+  experienceHighlights: [
+    "Venue Operations Manager | Example Events | 2025 - Led live event delivery and supplier coordination"
+  ],
+  education: ["High School Diploma | Example School | 2011"],
+  languages: ["Arabic - Native", "English - Professional"],
   documents: [],
   recurringAnswers: []
 };
@@ -98,9 +103,12 @@ test("buildTailoredResume prioritizes site-focused evidence for a site manager r
       "NEBOSH International General Certificate in Occupational Health and Safety"
     )
   );
-  assert.match(tailored.tailoredSummary, /Focused on Site Manager \(m\/w\/d\) opportunities/);
+  assert.match(tailored.tailoredSummary, /live-event project-delivery experience relevant to the Site Manager \(m\/w\/d\) role/);
   assert.match(tailored.tailoredSummary, /Formula 1 venue operations supporting 50,000\+ attendees/);
   assert.ok(tailored.sections.some((section) => section.key === "summary"));
+  assert.ok(tailored.sections.some((section) => section.key === "professional-experience"));
+  assert.ok(tailored.sections.some((section) => section.key === "education"));
+  assert.ok(tailored.sections.some((section) => section.key === "languages"));
   assert.ok(tailored.evidenceTrail.some((evidence) => evidence.kind === "headline"));
 });
 
@@ -111,7 +119,7 @@ test("buildTailoredResume shifts toward installation evidence for a build manage
   assert.equal(tailored.selectedProofPoints[0], "6-venue build delivery");
   assert.ok(tailored.selectedProofPoints.includes("100% AutoCAD layout compliance"));
   assert.ok(tailored.selectedProofPoints.includes("installations completed 20% ahead of schedule"));
-  assert.match(tailored.tailoredSummary, /Focused on Event Build Manager opportunities/);
+  assert.match(tailored.tailoredSummary, /live-event project-delivery experience relevant to the Event Build Manager role/);
   assert.ok(tailored.matchedKeywords.includes("installation"));
   assert.ok(tailored.matchedKeywords.includes("build"));
 });

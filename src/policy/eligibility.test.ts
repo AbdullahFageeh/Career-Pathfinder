@@ -57,6 +57,32 @@ test("assessJobEligibility blocks Saudi-national-only roles for non-nationals", 
   assert.ok(assessment.blockers.some((blocker) => blocker.kind === "nationality-restricted"));
 });
 
+test("assessJobEligibility reviews nationality preferences without blocking the role", () => {
+  const assessment = assessJobEligibility(
+    buildJob({
+      description:
+        "We prefer Saudi nationals and Riyadh-based candidates. Not every box is required; apply anyway.",
+      tags: ["official-source", "saudi-arabia", "riyadh"]
+    })
+  );
+
+  assert.equal(assessment.requiresSaudiNationality, false);
+  assert.equal(assessment.eligible, true);
+  assert.ok(assessment.warnings.some((warning) => warning.kind === "nationality-mention-review"));
+});
+
+test("assessJobEligibility blocks explicit Saudi-national-only language in the description", () => {
+  const assessment = assessJobEligibility(
+    buildJob({
+      description: "This vacancy is open to Saudi nationals only.",
+      tags: ["official-source", "saudi-arabia", "riyadh"]
+    })
+  );
+
+  assert.equal(assessment.requiresSaudiNationality, true);
+  assert.equal(assessment.eligible, false);
+});
+
 test("assessJobEligibility allows Saudi-national-only roles when the candidate qualifies", () => {
   const assessment = assessJobEligibility(
     buildJob({

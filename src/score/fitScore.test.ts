@@ -90,6 +90,24 @@ test("scoreJobFit penalises entry-level roles and weak application channels", ()
   assert.ok(fit.score < 55);
 });
 
+test("scoreJobFit describes LinkedIn listings as manual-review channels", () => {
+  const url = "https://sa.linkedin.com/jobs/view/project-manager-at-example-events-123";
+  const fit = scoreJobFit(
+    profile,
+    buildJob({
+      source: { kind: "job-board", name: "LinkedIn Jobs", url },
+      applicationTarget: { url },
+      tags: ["official-source", "saudi-arabia", "jeddah"]
+    }),
+    { now }
+  );
+
+  const channel = fit.dimensions.find((dimension) => dimension.key === "application-channel");
+  assert.equal(channel?.score, 5);
+  assert.match(channel?.notes[0] ?? "", /LinkedIn job listing/);
+  assert.match(channel?.notes[0] ?? "", /manually/);
+});
+
 test("scoreJobFit scores remote roles as zero travel cost", () => {
   const fit = scoreJobFit(
     profile,
@@ -103,6 +121,35 @@ test("scoreJobFit scores remote roles as zero travel cost", () => {
   const location = fit.dimensions.find((dimension) => dimension.key === "location");
   assert.equal(location?.score, 15);
   assert.equal(fit.eligibility.remoteFriendly, true);
+});
+
+test("scoreJobFit applies career-domain safeguards in the standard selection profile", () => {
+  const cybersecurity = scoreJobFit(
+    profile,
+    buildJob({
+      id: "job-cybersecurity",
+      title: "Assistant Manager - Cybersecurity Threat Management",
+      description:
+        "Lead cybersecurity threat intelligence, incident response, security controls, and compliance operations."
+    }),
+    { now, selectionProfile: "standard" }
+  );
+  const businessDevelopment = scoreJobFit(
+    profile,
+    buildJob({
+      id: "job-business-development",
+      title: "Business Development Project Manager (Event and Exhibition)",
+      description:
+        "Own business development, sales targets, client acquisition, and event project delivery."
+    }),
+    { now, selectionProfile: "standard" }
+  );
+
+  assert.ok(cybersecurity.score < 50, `expected cybersecurity hold, received ${cybersecurity.score}`);
+  assert.equal(cybersecurity.careerDomainCompatible, false);
+  assert.match(cybersecurity.reasons[0] ?? "", /Career-domain hold/);
+  assert.ok(businessDevelopment.score < 50, `expected sales-first hold, received ${businessDevelopment.score}`);
+  assert.equal(businessDevelopment.careerDomainCompatible, false);
 });
 
 test("rankJobOpportunities orders eligible roles and drops blocked ones by default", () => {

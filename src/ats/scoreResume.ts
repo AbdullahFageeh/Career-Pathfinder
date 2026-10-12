@@ -223,14 +223,20 @@ function scoreResumeStructure(resume: TailoredResume): AtsAssessmentDimension {
     notes.push("Resume includes a headline and a readable tailored summary.");
   }
 
-  if (sectionKeys.has("proof-points") && resume.selectedProofPoints.length > 0) {
+  if (sectionKeys.has("professional-experience")) {
+    score += 4;
+    notes.push("Resume has a dedicated professional-experience section.");
+  } else if (sectionKeys.has("proof-points") && resume.selectedProofPoints.length > 0) {
     score += 4;
     notes.push("Resume has a dedicated proof-points section.");
   }
 
-  if (sectionKeys.has("target-role-families") && resume.selectedRoleFamilies.length > 0) {
+  if (sectionKeys.has("proof-points") && resume.selectedProofPoints.length > 0) {
     score += 3;
-    notes.push("Resume keeps role-targeting context visible.");
+    notes.push("Resume keeps selected achievements visible.");
+  } else if (resume.selectedRoleFamilies.length > 0) {
+    score += 3;
+    notes.push("Resume keeps role-targeting context in its tailored summary.");
   }
 
   if (sectionKeys.has("certifications") && resume.selectedCertifications.length > 0) {

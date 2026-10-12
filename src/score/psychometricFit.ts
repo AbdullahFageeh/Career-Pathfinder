@@ -168,6 +168,11 @@ const CAREER_DOMAIN_BLOCKERS: readonly SignalGroup[] = [
     terms: ["engineering manager", "software engineer", "cyber security", "cybersecurity", "backend", "frontend", "devops"]
   },
   {
+    label: "healthcare or clinical specialty",
+    score: 100,
+    terms: ["clinical", "healthcare", "medical director", "chief medical"]
+  },
+  {
     label: "sales-first specialty",
     score: 100,
     terms: ["sales director", "business development", "cold calling", "sales quota", "commission targets"]
@@ -183,6 +188,8 @@ const SPECIALTY_REQUIREMENTS: ReadonlyArray<{
   label: string;
   jobTerms: readonly string[];
   profileEvidenceTerms: readonly string[];
+  minimumMatches?: number;
+  titleTerms?: readonly string[];
 }> = [
   {
     label: "financial-services governance and SAMA regulation",
@@ -212,7 +219,14 @@ const SPECIALTY_REQUIREMENTS: ReadonlyArray<{
   {
     label: "maintenance-competency and enterprise-asset-system specialization",
     jobTerms: ["maintenance competency", "sap", "maximo", "enterprise asset management", "eam system"],
-    profileEvidenceTerms: ["maintenance competency", "sap pm", "maximo", "enterprise asset management", "eam system"]
+    profileEvidenceTerms: ["maintenance competency", "sap pm", "maximo", "enterprise asset management", "eam system"],
+    minimumMatches: 2
+  },
+  {
+    label: "gaming and esports strategy specialization",
+    jobTerms: ["gaming", "esports", "e-sports"],
+    profileEvidenceTerms: ["gaming", "esports", "e-sports"],
+    titleTerms: ["gaming", "esports", "e-sports"]
   },
   {
     label: "hospitality and food-and-beverage operations specialization",
@@ -281,8 +295,16 @@ export function assessPsychometricAlignment(job: JobPosting): PsychometricAlignm
  */
 export function assessCareerDomainAlignment(job: JobPosting): CareerDomainAlignment {
   const text = jobText(job);
+  const title = job.title.toLowerCase();
   const matchedSignals = matchSignals(text, CAREER_DOMAIN_SIGNALS);
-  const blockers = matchSignals(text, CAREER_DOMAIN_BLOCKERS);
+  const blockers = matchSignals(text, CAREER_DOMAIN_BLOCKERS).filter((signal) => {
+    if (signal.label !== "sales-first specialty") {
+      return true;
+    }
+
+    return ["business development", "sales", "account manager", "account executive"].some((term) => title.includes(term)) ||
+      ["cold calling", "sales quota", "commission targets"].some((term) => text.includes(term));
+  });
   const score = clamp(matchedSignals.reduce((total, signal) => total + signal.score, 0), 0, 100);
 
   return {
@@ -302,6 +324,7 @@ export function assessVerifiedSpecialtyAlignment(
   job: JobPosting
 ): VerifiedSpecialtyAlignment {
   const posting = jobText(job);
+  const title = job.title.toLowerCase();
   const profileText = [
     profile.headline,
     ...profile.targetRoleFamilies,
@@ -311,9 +334,13 @@ export function assessVerifiedSpecialtyAlignment(
     .join(" ")
     .toLowerCase();
   const blockers = SPECIALTY_REQUIREMENTS.filter(
-    (requirement) =>
-      requirement.jobTerms.some((term) => posting.includes(term)) &&
-      !requirement.profileEvidenceTerms.some((term) => profileText.includes(term))
+    (requirement) => {
+      const matchedJobTerms = requirement.jobTerms.filter((term) => includesTerm(posting, term));
+      const titleMatches = requirement.titleTerms?.some((term) => includesTerm(title, term)) ?? true;
+      return matchedJobTerms.length >= (requirement.minimumMatches ?? 1) &&
+        titleMatches &&
+        !requirement.profileEvidenceTerms.some((term) => includesTerm(profileText, term));
+    }
   ).map((requirement) => `Posting requires explicit ${requirement.label}, which is not evidenced in the candidate profile.`);
 
   return { compatible: blockers.length === 0, blockers };
@@ -335,7 +362,19 @@ export function assessIkigaiAlignment(job: JobPosting): IkigaiAlignment {
 }
 
 function matchSignals(text: string, signals: readonly SignalGroup[]): SignalGroup[] {
-  return signals.filter((signal) => signal.terms.some((term) => text.includes(term)));
+  return signals.filter((signal) => signal.terms.some((term) => includesTerm(text, term)));
+}
+
+function includesTerm(text: string, term: string): boolean {
+  if (term.length > 3 || /\s|[-&/]/.test(term)) {
+    return text.includes(term);
+  }
+
+  return new RegExp(`\\b${escapeRegExp(term)}\\b`, "i").test(text);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function jobText(job: JobPosting): string {

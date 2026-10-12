@@ -616,9 +616,10 @@ async function runDailyAutomationCli(
         `- skipped: ${result.run.skipped ? "yes" : "no"}`,
         `- sources queried: ${result.discovery.sourcesQueried}`,
         `- roles found: ${result.discovery.listings}`,
-        `- queued: ${result.run.queued.length}`,
-        `- review required: ${result.run.reviewRequired.length}`,
+        `- queued: ${result.run.run.counts.queued}`,
+        `- review required: ${result.run.run.counts.reviewRequired}`,
         `- auto-submitted: ${result.run.run.counts.submitted}`,
+        result.run.skipped ? "- existing review report preserved" : undefined,
         result.outputPath ? `- review queue: ${result.outputPath}` : undefined
       ]
         .filter((line): line is string => typeof line === "string")

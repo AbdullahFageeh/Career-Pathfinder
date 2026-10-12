@@ -130,7 +130,7 @@ test("runs one trusted daily automation cycle and queues only qualified roles", 
 
 });
 
-test("returns the existing result instead of creating a second run for the same daily key", async (t) => {
+test("returns the existing result instead of creating a second run in the same scan window", async (t) => {
   const dir = makeTempDir();
   const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
   t.after(async () => {
@@ -152,6 +152,45 @@ test("returns the existing result instead of creating a second run for the same 
   assert.equal(second.skipped, true);
   assert.equal(second.run.id, first.run.id);
   assert.equal((await storage.listQueueJobs()).length, 1);
+});
+
+test("runs again in the next four-hour scan window", async (t) => {
+  const dir = makeTempDir();
+  const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
+
+  const first = await runDailyAutomationDesk({
+    storage,
+    config,
+    profile,
+    jobs: [buildGreenhouseJob()],
+    now: "2026-08-15T08:01:00.000Z"
+  });
+  const duplicate = await runDailyAutomationDesk({
+    storage,
+    config,
+    profile,
+    jobs: [buildGreenhouseJob()],
+    now: "2026-08-15T11:59:00.000Z"
+  });
+  const nextWindow = await runDailyAutomationDesk({
+    storage,
+    config,
+    profile,
+    jobs: [buildGreenhouseJob({ id: "greenhouse:dmgevents:456", title: "Event Production Manager" })],
+    now: "2026-08-15T12:01:00.000Z"
+  });
+
+  assert.equal(first.skipped, false);
+  assert.equal(duplicate.skipped, true);
+  assert.equal(duplicate.run.id, first.run.id);
+  assert.equal(nextWindow.skipped, false);
+  assert.notEqual(nextWindow.run.id, first.run.id);
+  assert.equal(nextWindow.run.counts.submitted, 0);
+  assert.equal((await storage.listQueueJobs()).length, 2);
 });
 
 test("runs again on the same day when the effective automation configuration changes", async (t) => {
@@ -227,6 +266,39 @@ test("blocks a new role when the employer cooldown is active from a prior applic
 
   assert.equal(result.queued.length, 0);
   assert.equal(result.reviewRequired[0]?.reason, "employer-cooldown-active");
+});
+
+test("labels a second same-day role from one employer as an employer daily cap", async (t) => {
+  const dir = makeTempDir();
+  const storage = createSqliteStorage({ storagePath: join(dir, "test.sqlite") });
+  t.after(async () => {
+    await storage.close();
+    rmSync(dir, { recursive: true });
+  });
+
+  const result = await runDailyAutomationDesk({
+    storage,
+    config,
+    profile,
+    jobs: [
+      buildGreenhouseJob(),
+      buildGreenhouseJob({
+        id: "greenhouse:dmgevents:456",
+        title: "Event Production Manager",
+        applicationTarget: {
+          url: "https://job-boards.greenhouse.io/dmgevents/jobs/456",
+          platform: "greenhouse",
+          boardToken: "dmgevents",
+          jobId: "456"
+        }
+      })
+    ],
+    now: "2026-08-15T08:00:00.000Z"
+  });
+
+  assert.equal(result.queued.length, 1);
+  assert.equal(result.reviewRequired.length, 1);
+  assert.equal(result.reviewRequired[0]?.reason, "employer-daily-cap-exceeded");
 });
 
 test("uses a zero daily cap as a safe pause without queueing roles", async (t) => {

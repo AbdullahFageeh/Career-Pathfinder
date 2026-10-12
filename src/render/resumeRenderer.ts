@@ -30,7 +30,7 @@ export function renderTailoredResumeHtml(
 ): string {
   const renderedSections = resume.sections.map(renderSection).join("\n");
   const locationLine = job.location
-    ? `\n        <p><strong>Location:</strong> ${escapeHtml(job.location)}</p>`
+    ? `\n        <p><strong>Target location:</strong> ${escapeHtml(job.location)}</p>`
     : "";
 
   return [

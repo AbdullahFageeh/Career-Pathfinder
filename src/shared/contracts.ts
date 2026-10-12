@@ -44,11 +44,15 @@ export type CandidateProfile = {
   preferredName?: string;
   email?: string;
   phone?: string;
+  city?: string;
   country?: string;
   headline: string;
   targetRoleFamilies: string[];
   certifications: string[];
   coreProofPoints: string[];
+  experienceHighlights?: string[];
+  education?: string[];
+  languages?: string[];
   documents: DocumentReference[];
   recurringAnswers: RecurringAnswer[];
 };
@@ -99,9 +103,12 @@ export type TailoringEvidence = {
 
 export type TailoredResumeSectionKey =
   | "summary"
+  | "professional-experience"
   | "target-role-families"
   | "proof-points"
-  | "certifications";
+  | "certifications"
+  | "education"
+  | "languages";
 
 export type TailoredResumeSection = {
   key: TailoredResumeSectionKey;

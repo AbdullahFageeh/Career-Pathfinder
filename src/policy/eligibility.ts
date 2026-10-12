@@ -18,7 +18,8 @@ export type EligibilityWarningKind =
   | "remote-jurisdiction-review"
   | "unofficial-source"
   | "seniority-mismatch-risk"
-  | "language-requirement";
+  | "language-requirement"
+  | "nationality-mention-review";
 
 export type EligibilityWarning = {
   kind: EligibilityWarningKind;
@@ -114,17 +115,34 @@ export const SAUDI_CITY_TERMS: readonly string[] = [
 const REMOTE_TERMS: readonly string[] = ["remote", "work from home", "hybrid", "telecommute"];
 
 const NATIONALITY_RESTRICTION_TERMS: readonly string[] = [
-  "saudi national",
-  "saudi nationals",
   "saudi national only",
   "saudi nationals only",
   "saudis only",
   "saudi nationality is required",
   "must be a saudi national",
   "saudi national candidates only",
-  "open to saudi nationals",
-  "for saudi nationals",
-  "saudi citizens only"
+  "saudi citizens only",
+  "only saudi nationals",
+  "only saudi citizens",
+  "ksa nationals only"
+];
+
+const NATIONALITY_TITLE_TERMS: readonly string[] = [
+  "saudi national",
+  "saudi nationals",
+  "saudi citizen",
+  "saudi citizens",
+  "saudi-only",
+  "saudi only"
+];
+
+const NATIONALITY_MENTION_TERMS: readonly string[] = [
+  "saudi national",
+  "saudi nationals",
+  "saudi citizen",
+  "saudi citizens",
+  "ksa national",
+  "ksa nationals"
 ];
 
 const NATIONALITY_RESTRICTION_TAGS: readonly string[] = [
@@ -188,6 +206,7 @@ export function assessJobEligibility(
 
   const requiresSaudiNationality =
     NATIONALITY_RESTRICTION_TAGS.some((tag) => normalizedTags.includes(tag)) ||
+    containsAny((job.title ?? "").toLowerCase(), NATIONALITY_TITLE_TERMS) ||
     containsAny(haystack, NATIONALITY_RESTRICTION_TERMS);
 
   const blockers: EligibilityBlocker[] = [];
@@ -223,6 +242,13 @@ export function assessJobEligibility(
     blockers.push({
       kind: "nationality-restricted",
       message: "Posting is restricted to Saudi nationals and the candidate profile does not confirm that status."
+    });
+  }
+
+  if (!requiresSaudiNationality && containsAny(haystack, NATIONALITY_MENTION_TERMS)) {
+    warnings.push({
+      kind: "nationality-mention-review",
+      message: "Posting mentions Saudi nationality without an explicit restriction; confirm whether it is a preference or hard requirement."
     });
   }
 

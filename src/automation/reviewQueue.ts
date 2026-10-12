@@ -83,6 +83,8 @@ function readReviewAction(reason: string): string {
       return "Keep the newer matching listing only.";
     case "daily-cap-exceeded":
       return "Hold for the next daily run or raise the cap deliberately.";
+    case "employer-daily-cap-exceeded":
+      return "Work the higher-ranked role from this employer first.";
     case "employer-cooldown-active":
       return "Wait until the employer cooldown has elapsed.";
     case "already-applied":

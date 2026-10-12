@@ -10,6 +10,7 @@ const referenceFixture = `# Job Application Reference
 ## Identity and contact
 - Full legal name: Test Candidate
 - Preferred display name: Test Candidate
+- Current city: Riyadh
 - Current country: Saudi Arabia
 
 ## Professional headline
@@ -31,6 +32,16 @@ const referenceFixture = `# Job Application Reference
 - NEBOSH International General Certificate in Occupational Health and Safety (2024)
 - PMP Certification Training Course (2024)
 
+## Professional experience
+- Site Manager | Example Events | 2025 - Delivered venue setup ahead of schedule
+
+## Education
+- High School Diploma | Example School | 2011
+
+## Languages
+- Arabic - Native
+- English - Professional
+
 ## Documents and file references
 - Master CV PDF: /tmp/Test_Candidate_CV.pdf
 - Cover letter base template: TODO
@@ -49,6 +60,7 @@ test("loadCandidateProfile parses local reference markdown and filters TODO valu
   const profile = await loadCandidateProfile({ referencePath });
 
   assert.equal(profile.fullName, "Test Candidate");
+  assert.equal(profile.city, "Riyadh");
   assert.equal(profile.country, "Saudi Arabia");
   assert.equal(profile.headline, "Site Operations | Production Manager");
   assert.deepEqual(profile.targetRoleFamilies, ["Site Manager", "Production Manager"]);
@@ -56,6 +68,11 @@ test("loadCandidateProfile parses local reference markdown and filters TODO valu
     "NEBOSH International General Certificate in Occupational Health and Safety (2024)",
     "PMP Certification Training Course (2024)"
   ]);
+  assert.deepEqual(profile.experienceHighlights, [
+    "Site Manager | Example Events | 2025 - Delivered venue setup ahead of schedule"
+  ]);
+  assert.deepEqual(profile.education, ["High School Diploma | Example School | 2011"]);
+  assert.deepEqual(profile.languages, ["Arabic - Native", "English - Professional"]);
   assert.equal(profile.documents.length, 1);
   assert.equal(profile.documents[0].path, "/tmp/Test_Candidate_CV.pdf");
   assert.equal(profile.recurringAnswers.length, 2);

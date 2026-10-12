@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -107,6 +108,24 @@ test("runs configured Greenhouse discovery through the safe daily queue and writ
   assert.equal(result.run.queued.length, 1);
   assert.equal(result.outputPath, reportPath);
   assert.match(result.markdown, /Daily automation desk review queue/);
+
+  const repeated = await runDailyAutomationOperation(
+    { configPath, storage, outputPath: reportPath, now: "2026-08-15T09:00:00.000Z" },
+    {
+      loadCandidateProfile: async () => profile,
+      discoverSaudiGreenhouseRoles: async () => ({
+        fetchedAt: "2026-08-15T09:00:00.000Z",
+        sourceName: "greenhouse-board",
+        boardsQueried: ["dmgevents"],
+        boardsFailed: [],
+        listings: []
+      })
+    }
+  );
+
+  assert.equal(repeated.run.skipped, true);
+  assert.match(repeated.markdown, /saved report was preserved/);
+  assert.equal(await readFile(reportPath, "utf8"), result.markdown);
 });
 
 

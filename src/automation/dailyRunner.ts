@@ -13,7 +13,8 @@ import {
   getAutomationRunByIdempotencyKey
 } from "./runStore.js";
 
-const SCORING_POLICY_VERSION = "16";
+const SCORING_POLICY_VERSION = "18";
+const SCAN_WINDOW_MS = 4 * 60 * 60 * 1000;
 
 export type DailyAutomationDeskOptions = {
   storage: PipelineStorage;
@@ -41,7 +42,7 @@ export type DailyAutomationDeskResult = {
 };
 
 /**
- * Runs one daily, idempotent application-desk cycle. It deliberately stops at
+ * Runs one idempotent application-desk cycle per four-hour scan window. It deliberately stops at
  * queue creation: the existing worker remains responsible for tailoring,
  * rendering, scoring, and adapter-level submission checks. This boundary lets
  * the scheduled run decide *what* may progress while adapters decide *whether*
@@ -51,7 +52,7 @@ export async function runDailyAutomationDesk(
   options: DailyAutomationDeskOptions
 ): Promise<DailyAutomationDeskResult> {
   const now = options.now ?? new Date().toISOString();
-  const idempotencyKey = createDailyIdempotencyKey(now, options.config);
+  const idempotencyKey = createScanWindowIdempotencyKey(now, options.config);
   const existingRun = await getAutomationRunByIdempotencyKey(options.storage, idempotencyKey);
 
   if (existingRun) {
@@ -146,13 +147,13 @@ export async function runDailyAutomationDesk(
   }
 }
 
-function createDailyIdempotencyKey(timestamp: string, config: AutomationDeskConfig): string {
-  const date = new Date(timestamp).toISOString().slice(0, 10);
+function createScanWindowIdempotencyKey(timestamp: string, config: AutomationDeskConfig): string {
+  const window = Math.floor(new Date(timestamp).getTime() / SCAN_WINDOW_MS);
   const fingerprint = createHash("sha256")
     .update(stableJson(config))
     .digest("hex")
     .slice(0, 12);
-  return `daily:${date}:config:${config.version}:scoring:${SCORING_POLICY_VERSION}:${fingerprint}`;
+  return `scan:${window}:config:${config.version}:scoring:${SCORING_POLICY_VERSION}:${fingerprint}`;
 }
 
 function stableJson(value: unknown): string {
@@ -207,8 +208,12 @@ async function selectQueueableRoles(
     const normalizedEmployer = candidate.job.company.trim().toLowerCase();
     const selectedForEmployer = employerCounts.get(normalizedEmployer) ?? 0;
     const historicalForEmployer = historicalEmployerCounts.get(normalizedEmployer) ?? 0;
-    if (selectedForEmployer + historicalForEmployer >= config.caps.maxApplicationsPerEmployer) {
+    if (historicalForEmployer >= config.caps.maxApplicationsPerEmployer) {
       reviewRequired.push({ job: candidate.job, reason: "employer-cooldown-active" });
+      continue;
+    }
+    if (selectedForEmployer >= config.caps.maxApplicationsPerEmployer) {
+      reviewRequired.push({ job: candidate.job, reason: "employer-daily-cap-exceeded" });
       continue;
     }
 

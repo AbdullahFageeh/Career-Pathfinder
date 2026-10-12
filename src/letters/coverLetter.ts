@@ -35,6 +35,10 @@ const LETTER_NOISE_TERMS = new Set([
   "candidate",
   "applicants",
   "team",
+  "client",
+  "budget",
+  "vendor",
+  "venue",
   "work",
   "across",
   "authority",
@@ -42,6 +46,8 @@ const LETTER_NOISE_TERMS = new Set([
   "years",
   "degree",
   "minimum",
+  "tender",
+  "supplier",
   "required",
   "skills",
   "ability",
@@ -54,7 +60,9 @@ const LETTER_NOISE_TERMS = new Set([
   "strong",
   "excellent",
   "good",
-  "knowledge"
+  "knowledge",
+  "asset",
+  "contract"
 ]);
 
 /**
@@ -181,7 +189,7 @@ export function buildCoverLetterDraft(
 
   const openingParagraph = [
     TONE_OPENERS[tone](job),
-    profile.headline,
+    buildHeadlineOpening(profile.headline),
     options.companyHook ?? ""
   ]
     .map((sentence) => ensureSentence(sentence))
@@ -192,7 +200,7 @@ export function buildCoverLetterDraft(
     ? `Recent delivery evidence: ${proofPoints.map((point) => stripTrailingPeriod(point)).join("; ")}.`
     : "My delivery record covers site setup, supplier coordination, and load-out on live event programmes.";
 
-  const alignmentParagraph = buildAlignmentParagraph(job, keywords, certifications);
+  const alignmentParagraph = buildAlignmentParagraph(job, keywords, certifications, options.companyHook);
 
   const closingParagraph = buildClosingParagraph(profile, job);
 
@@ -436,21 +444,30 @@ function selectLetterKeywords(job: JobPosting, maxKeywords: number): string[] {
 function buildAlignmentParagraph(
   job: JobPosting,
   keywords: readonly string[],
-  certifications: readonly string[]
+  certifications: readonly string[],
+  companyHook?: string
 ): string {
   const focusTerms = keywords.slice(0, 5);
   const sentences: string[] = [];
 
-  if (focusTerms.length > 0) {
+  const usefulTerms = focusTerms.filter((term) => {
+    const normalized = term.toLowerCase();
+    return !job.title.toLowerCase().includes(normalized) &&
+      !/\b(project|event)\s+project\s+manager\b/.test(normalized) &&
+      !/\b(manager|director|lead)\b/.test(normalized) &&
+      !/^(event|events|operation|operations)$/.test(normalized) &&
+      !companyHook?.toLowerCase().includes(normalized);
+  }).slice(0, 3).map((term) => term.toLowerCase());
+  if (usefulTerms.length > 0) {
     sentences.push(
-      `Your posting focuses on ${formatList(focusTerms)}; my live-event operations background includes closely related delivery in these areas.`
+      `My live-event delivery experience aligns with the role's focus on ${formatList(usefulTerms)}.`
     );
-  } else {
+  } else if (!companyHook) {
     sentences.push(`The scope in your posting is closely related to the live-event delivery work I have supported.`);
   }
 
   if (certifications.length > 0) {
-    sentences.push(`I hold ${formatList(certifications.slice(0, 2))}.`);
+    sentences.push(`Relevant credentials and training include ${formatList(certifications.slice(0, 2))}.`);
   }
 
   return sentences.join(" ");
@@ -469,6 +486,18 @@ function buildClosingParagraph(profile: CandidateProfile, job: JobPosting): stri
   ]
     .filter((sentence) => sentence.length > 0)
     .join(" ");
+}
+
+function buildHeadlineOpening(headline: string): string {
+  const cleaned = headline.replace(/\.$/, "");
+  const match = cleaned.match(
+    /^(.+?\b(?:manager|director|lead|specialist|coordinator|supervisor))\s+(delivering|leading|managing|coordinating|building|overseeing)\s+(.+)$/i
+  );
+  if (match) {
+    const article = /^[aeiou]/i.test(match[1]) ? "an" : "a";
+    return `I am ${article} ${match[1]} with experience ${match[2].toLowerCase()} ${match[3]}.`;
+  }
+  return `My professional background: ${ensureSentence(cleaned)}`;
 }
 
 function selectProofPoints(

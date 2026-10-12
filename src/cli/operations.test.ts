@@ -353,7 +353,7 @@ test("runCli automation:run forwards private paths and prints the daily queue su
       reviewRequired: [{ reason: "source-not-trusted" }],
       run: {
         id: "run:daily",
-        counts: { submitted: 0 }
+        counts: { queued: 1, reviewRequired: 1, submitted: 0 }
       }
     },
     outputPath: "/tmp/review.md"
@@ -390,6 +390,7 @@ test("runCli automation:run forwards private paths and prints the daily queue su
   assert.match(stdout[0] ?? "", /Daily automation desk complete/);
   assert.match(stdout[0] ?? "", /roles found: 5/);
   assert.match(stdout[0] ?? "", /queued: 1/);
+  assert.match(stdout[0] ?? "", /review required: 1/);
 });
 
 

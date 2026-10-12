@@ -60,12 +60,14 @@ test("renderTailoredResumeHtml includes headline, role targeting, and key proof 
 
   assert.match(renderedHtml, /<h1>Avery Morgan<\/h1>/);
   assert.match(renderedHtml, /Target role:<\/strong> Site Manager \(m\/w\/d\) at ISS Integrated Facility Serv\. GmbH/);
+  assert.match(renderedHtml, /Target location:<\/strong> Hannover, Niedersachsen, Deutschland/);
+  assert.doesNotMatch(renderedHtml, /<strong>Location:<\/strong>/);
   assert.match(
     renderedHtml,
     /Installation, production, and site operations leader with delivery experience across complex live-event and venue environments\./
   );
   assert.match(renderedHtml, /Formula 1 venue operations supporting 50,000\+ attendees/);
-  assert.match(renderedHtml, /<h2>Relevant Certifications<\/h2>/);
+  assert.match(renderedHtml, /<h2>Certifications and Training<\/h2>/);
 });
 
 test("renderTailoredResumeArtifact writes a versioned HTML artifact", async (t) => {
@@ -85,5 +87,5 @@ test("renderTailoredResumeArtifact writes a versioned HTML artifact", async (t) 
   assert.equal(savedArtifact, result.content);
   assert.equal(basename(result.outputPath).endsWith(".html"), true);
   assert.match(savedArtifact, /Tailored Summary/);
-  assert.match(savedArtifact, /Target Role Families/);
+  assert.match(savedArtifact, /Selected Achievements/);
 });

@@ -14,36 +14,42 @@ const ATS_SAFE_PRINT_CSS = `
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    padding: 18mm 16mm;
+    padding: 12mm 13mm;
     background: #ffffff;
     color: #111111;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 10.5pt;
-    line-height: 1.45;
+    font-size: 9.5pt;
+    line-height: 1.27;
   }
   h1 {
-    margin: 0 0 2mm 0;
-    font-size: 19pt;
+    margin: 0 0 1.5mm 0;
+    font-size: 18pt;
     letter-spacing: 0.2pt;
   }
   h2 {
-    margin: 7mm 0 2mm 0;
-    padding-bottom: 1mm;
+    margin: 3.5mm 0 1mm 0;
+    padding-bottom: 0.7mm;
     border-bottom: 0.6pt solid #999999;
-    font-size: 11pt;
+    font-size: 10.5pt;
     text-transform: uppercase;
     letter-spacing: 0.6pt;
   }
-  p { margin: 0 0 2.5mm 0; }
-  ul { margin: 0 0 2.5mm 0; padding-left: 5mm; }
-  li { margin: 0 0 1.5mm 0; }
+  p { margin: 0 0 1.5mm 0; }
+  ul { margin: 0 0 1.5mm 0; padding-left: 5mm; }
+  li { margin: 0 0 0.6mm 0; }
+  li strong { display: block; margin-bottom: 0.5mm; }
   .contact { margin: 0 0 1mm 0; font-size: 9.5pt; color: #333333; }
   .headline { margin: 0 0 3mm 0; font-size: 11pt; font-weight: 600; }
-  .target { margin: 0 0 4mm 0; font-size: 9.5pt; color: #444444; }
+    .target { margin: 0 0 3mm 0; font-size: 9.25pt; color: #444444; }
   .signature { margin-top: 6mm; }
+  body.cover-letter { padding: 22mm 25mm; font-size: 11pt; line-height: 1.42; }
+  body.cover-letter h1 { margin-bottom: 2mm; font-size: 20pt; }
+  body.cover-letter p { margin-bottom: 4mm; }
+  body.cover-letter .contact, body.cover-letter .target { font-size: 9.5pt; }
   @page { size: A4; margin: 0; }
   @media print {
-    body { padding: 16mm 15mm; }
+    body { padding: 10mm 12mm; }
+    body.cover-letter { padding: 20mm 24mm; }
     h2 { page-break-after: avoid; }
     li { page-break-inside: avoid; }
   }
@@ -101,7 +107,10 @@ export function renderResumeDocumentHtml(
   job: JobPosting,
   resume: TailoredResume
 ): string {
-  const contactLine = [profile.email, profile.phone, profile.country]
+  const location = [profile.city, profile.country]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(", ");
+  const contactLine = [profile.email, profile.phone, location]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     .map((value) => escapeHtml(value))
     .join(" | ");
@@ -120,7 +129,13 @@ export function renderResumeDocumentHtml(
       return [
         `      <h2>${escapeHtml(section.title)}</h2>`,
         "      <ul>",
-        ...section.lines.map((line) => `        <li>${escapeHtml(line)}</li>`),
+        ...section.lines.map((line) => {
+          const separator = line.lastIndexOf(" - ");
+          if (section.key === "professional-experience" && separator > 0) {
+            return `        <li><strong>${escapeHtml(line.slice(0, separator))}</strong>${escapeHtml(line.slice(separator + 3))}</li>`;
+          }
+          return `        <li>${escapeHtml(line)}</li>`;
+        }),
         "      </ul>"
       ].join("\n");
     })
@@ -153,7 +168,10 @@ export function renderCoverLetterDocumentHtml(
     signOff: string;
   }
 ): string {
-  const contactLine = [profile.email, profile.phone, profile.country]
+  const location = [profile.city, profile.country]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(", ");
+  const contactLine = [profile.email, profile.phone, location]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     .map((value) => escapeHtml(value))
     .join(" | ");
@@ -172,7 +190,8 @@ export function renderCoverLetterDocumentHtml(
       `      <p>${escapeHtml(profile.fullName)}</p>`
     ]
       .filter((block) => block.length > 0)
-      .join("\n")
+      .join("\n"),
+    "cover-letter"
   );
 }
 
@@ -268,7 +287,7 @@ async function printHtmlToPdf(
   }
 }
 
-function buildHtmlDocument(title: string, body: string): string {
+function buildHtmlDocument(title: string, body: string, bodyClass = ""): string {
   return [
     "<!DOCTYPE html>",
     '<html lang="en">',
@@ -280,7 +299,7 @@ function buildHtmlDocument(title: string, body: string): string {
     ATS_SAFE_PRINT_CSS.trim(),
     "    </style>",
     "  </head>",
-    "  <body>",
+    `  <body${bodyClass ? ` class="${escapeHtml(bodyClass)}"` : ""}>`,
     "    <main>",
     body,
     "    </main>",

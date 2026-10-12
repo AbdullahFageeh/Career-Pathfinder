@@ -63,3 +63,42 @@ test("formats queued and review-required roles into an actionable operator repor
   assert.match(markdown, /greenhouse:example/);
   assert.match(markdown, /Request timed out/);
 });
+
+test("explains the difference between a same-day employer cap and a cooldown", () => {
+  const baseJob = {
+    id: "job:2",
+    source: { kind: "company-page" as const, name: "Employer Careers" },
+    title: "Event Operations Manager",
+    company: "Other Events",
+    location: "Jeddah, Saudi Arabia",
+    description: "Event operations.",
+    tags: ["official-source"],
+    discoveredAt: "2026-08-15T08:00:00.000Z"
+  };
+  const markdown = formatAutomationReviewQueueMarkdown({
+    generatedAt: "2026-08-15T08:00:00.000Z",
+    run: {
+      id: "run:2",
+      idempotencyKey: "daily:2026-08-15:config:1",
+      configVersion: 1,
+      status: "completed",
+      startedAt: "2026-08-15T08:00:00.000Z",
+      counts: {
+        discovered: 2,
+        qualified: 2,
+        queued: 0,
+        submitted: 0,
+        reviewRequired: 2,
+        failed: 0
+      }
+    },
+    queued: [],
+    reviewRequired: [
+      { job: baseJob, reason: "employer-daily-cap-exceeded" },
+      { job: { ...baseJob, id: "job:3" }, reason: "employer-cooldown-active" }
+    ]
+  });
+
+  assert.match(markdown, /Work the higher-ranked role from this employer first/);
+  assert.match(markdown, /Wait until the employer cooldown has elapsed/);
+});

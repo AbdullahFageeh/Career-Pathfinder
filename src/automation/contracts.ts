@@ -15,6 +15,7 @@ export type ReviewReason =
   | "missing-evidence"
   | "consent-required"
   | "daily-cap-exceeded"
+  | "employer-daily-cap-exceeded"
   | "employer-cooldown-active"
   | "unknown-required-question"
   | "source-not-trusted"

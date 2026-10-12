@@ -120,14 +120,13 @@ export function buildTailoredResume(
   const tailoredSummary = buildTailoredSummary(
     profile,
     job,
-    selectedRoleFamilies.map((item) => item.value),
     selectedProofPoints.map((item) => item.value),
     selectedCertifications.map((item) => item.value)
   );
 
   const sections = buildTailoredSections(
+    profile,
     tailoredSummary,
-    selectedRoleFamilies.map((item) => item.value),
     selectedProofPoints.map((item) => item.value),
     selectedCertifications.map((item) => item.value)
   );
@@ -163,29 +162,27 @@ export function extractJobKeywords(
 function buildTailoredSummary(
   profile: CandidateProfile,
   job: JobPosting,
-  roleFamilies: string[],
   proofPoints: string[],
   certifications: string[]
 ): string {
   const sentences = [profile.headline.trim()];
-  const focusLead = roleFamilies.length > 0 ? joinList(roleFamilies.slice(0, 2)) : job.title;
-  const focusSentence = `Focused on ${job.title} opportunities with strongest fit across ${focusLead}.`;
+  const focusSentence = `Brings live-event project-delivery experience relevant to the ${job.title} role.`;
   sentences.push(focusSentence);
 
   if (proofPoints.length > 0) {
-    sentences.push(`Top supporting evidence: ${joinList(proofPoints.slice(0, 3))}.`);
+    sentences.push(`Selected result: ${proofPoints[0]}.`);
   }
 
   if (certifications.length > 0) {
-    sentences.push(`Relevant certifications: ${joinList(certifications.slice(0, 2))}.`);
+    sentences.push(`Credentials include ${joinList(certifications.slice(0, 2))}.`);
   }
 
   return sentences.join(" ");
 }
 
 function buildTailoredSections(
+  profile: CandidateProfile,
   tailoredSummary: string,
-  roleFamilies: string[],
   proofPoints: string[],
   certifications: string[]
 ): TailoredResumeSection[] {
@@ -196,19 +193,29 @@ function buildTailoredSections(
       lines: [tailoredSummary]
     },
     {
-      key: "target-role-families",
-      title: "Target Role Families",
-      lines: roleFamilies
+      key: "professional-experience",
+      title: "Professional Experience",
+      lines: profile.experienceHighlights ?? []
     },
     {
       key: "proof-points",
-      title: "Selected Proof Points",
-      lines: proofPoints
+      title: "Selected Achievements",
+      lines: (profile.experienceHighlights?.length ?? 0) > 0 ? [] : proofPoints
     },
     {
       key: "certifications",
-      title: "Relevant Certifications",
+      title: "Certifications and Training",
       lines: certifications
+    },
+    {
+      key: "education",
+      title: "Education",
+      lines: profile.education ?? []
+    },
+    {
+      key: "languages",
+      title: "Languages",
+      lines: profile.languages ?? []
     }
   ];
 

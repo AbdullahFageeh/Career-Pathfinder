@@ -200,6 +200,78 @@ test("holds an entertainment-operations role when maintenance competency systems
   assert.ok(fit.reasons.some((reason) => reason.includes("maintenance-competency")));
 });
 
+test("does not mistake WhatsApp for SAP in an operations posting", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "Operations Coordinator",
+      description:
+        "Coordinate logistics, suppliers, deliveries, customer issues, dashboards, and team communication through WhatsApp."
+    }),
+    { now: "2026-08-15T00:00:00.000Z" }
+  );
+
+  assert.equal(fit.verifiedSpecialtyCompatible, true);
+  assert.ok(!fit.reasons.some((reason) => reason.includes("maintenance-competency")));
+});
+
+test("keeps direct event delivery roles even when business growth is one responsibility", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "Events & Exhibitions Project Manager",
+      description:
+        "Lead event delivery, BOQs, suppliers, installation, site execution and handover while supporting business development and growth."
+    }),
+    { now: "2026-08-15T00:00:00.000Z" }
+  );
+
+  assert.equal(fit.careerDomainCompatible, true);
+  assert.ok(fit.score >= 60);
+});
+
+test("holds explicit business-development, clinical, and gaming strategy roles", () => {
+  const roles = [
+    job({
+      id: "business-development",
+      title: "Business Development Project Manager (Event and Exhibition)",
+      description: "Own business development, sales targets, client acquisition and event delivery."
+    }),
+    job({
+      id: "clinical",
+      title: "Chief Clinical Officer",
+      description: "Lead clinical operations for an entertainment destination."
+    }),
+    job({
+      id: "gaming",
+      title: "Assistant Manager - Gaming & Esports Strategy Support",
+      description: "Support gaming and esports strategy, partnerships and planning."
+    })
+  ];
+
+  const fits = roles.map((role) => scoreJobFit(profile, role, { now: "2026-08-15T00:00:00.000Z" }));
+
+  assert.equal(fits[0]?.careerDomainCompatible, false);
+  assert.equal(fits[1]?.careerDomainCompatible, false);
+  assert.equal(fits[2]?.verifiedSpecialtyCompatible, false);
+  assert.ok(fits.every((fit) => fit.score <= 34));
+});
+
+test("does not hold a direct event project role when gaming is only one optional sector example", () => {
+  const fit = scoreJobFit(
+    profile,
+    job({
+      title: "Project Manager - Activations",
+      description:
+        "Deliver mid-to-large exhibitions, conferences and sports events. Ideal sector exposure may include esports or live gaming events, defence or aviation events, or hackathons."
+    }),
+    { now: "2026-08-15T00:00:00.000Z" }
+  );
+
+  assert.equal(fit.verifiedSpecialtyCompatible, true);
+  assert.ok(!fit.reasons.some((reason) => reason.includes("gaming and esports")));
+});
+
 test("holds a hospitality role when the required food-and-beverage background is not evidenced", () => {
   const fit = scoreJobFit(
     profile,
